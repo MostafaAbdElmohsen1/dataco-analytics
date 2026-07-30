@@ -65,6 +65,20 @@ def sidebar():
                 children=[
                     html.Div(f"{t['lines']:,}", className="side-foot-value"),
                     html.Div("ORDER LINES", className="side-foot-label"),
+                    html.Div(
+                        className="credit",
+                        children=[
+                            "Data: Constante, Silva & Pereira (2019), ",
+                            html.I("DataCo Smart Supply Chain"),
+                            ", Mendeley Data V5 \u2014 ",
+                            html.A(
+                                "CC BY 4.0",
+                                href="https://creativecommons.org/licenses/by/4.0/",
+                                target="_blank",
+                                rel="noopener noreferrer",
+                            ),
+                        ],
+                    ),
                 ],
             ),
         ],
