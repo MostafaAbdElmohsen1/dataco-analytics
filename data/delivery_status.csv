@@ -1,0 +1,5 @@
+delivery_status_id,delivery_status_name,late_delivery_risk_flag
+1,Advance shipping,0
+2,Late delivery,1
+3,Shipping canceled,0
+4,Shipping on time,0

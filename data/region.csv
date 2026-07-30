@@ -1,0 +1,24 @@
+region_id,region_name,market_id
+1,Canada,5
+2,Caribbean,3
+3,Central Africa,1
+4,Central America,3
+5,Central Asia,4
+6,East Africa,1
+7,East of USA,5
+8,Eastern Asia,4
+9,Eastern Europe,2
+10,North Africa,1
+11,Northern Europe,2
+12,Oceania,4
+13,South America,3
+14,South Asia,4
+15,South of  USA ,5
+16,Southeast Asia,4
+17,Southern Africa,1
+18,Southern Europe,2
+19,US Center ,5
+20,West Africa,1
+21,West Asia,4
+22,West of USA ,5
+23,Western Europe,2
