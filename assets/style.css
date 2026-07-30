@@ -675,3 +675,85 @@ html, body {
 .credit i { font-style: italic; }
 
 @media (max-width: 1000px) { .credit { display: none; } }
+
+/* ===================================================================
+   filter bar v3 - sticky, professional, unambiguous selection
+   =================================================================== */
+.filter-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  margin: -8px 0 30px;
+  padding: 20px 22px 16px;
+  background: rgba(17, 9, 28, .94);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .45);
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: 9px;
+  color: #7d7095;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.6px;
+  text-transform: uppercase;
+}
+
+/* pill is now a real <button>, so state comes from the class */
+button.pill {
+  appearance: none;
+  font-family: inherit;
+  padding: 8px 16px;
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  background: rgba(21, 12, 34, .8);
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease,
+              border-color .15s ease, box-shadow .15s ease;
+}
+button.pill:hover {
+  color: var(--txt);
+  border-color: rgba(255, 0, 128, .45);
+  background: rgba(255, 0, 128, .10);
+}
+button.pill:active { transform: translateY(1px); }
+
+button.pill.pill-on {
+  background: var(--m1);
+  border-color: var(--m1);
+  color: #12040c;
+  font-weight: 600;
+  box-shadow: 0 0 0 3px rgba(255, 0, 128, .20);
+}
+button.pill.pill-on::before {
+  content: "\2713";
+  margin-right: 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ===================================================================
+   Plotly hover - one consistent card everywhere
+   =================================================================== */
+.hoverlayer .hovertext > rect,
+.hoverlayer .hovertext > path {
+  fill: rgba(21, 12, 34, .97) !important;
+  stroke: var(--m1) !important;
+  stroke-width: 1px !important;
+}
+.hoverlayer .hovertext text,
+.hoverlayer .hovertext .name {
+  fill: #f0eaf8 !important;
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+.hoverlayer .legend > rect { fill: rgba(21, 12, 34, .97) !important; }
+
+/* treemap breadcrumb bar */
+.treemap .pathbar text { fill: var(--dim) !important; }

@@ -1,9 +1,16 @@
 """
-pages/network.py - global distribution network.
+pages/network.py - distribution network structure and flow.
 
-The globe is a plain <canvas> driven by assets/globe.js, which redraws
-every frame with requestAnimationFrame. Rotation is continuous, not
-stepped, and there is no external library involved.
+Two charts do the work here:
+
+  Sunburst  - the real three-level hierarchy in the data
+              (market -> region -> country), area = revenue.
+  Sankey    - where orders actually go and how they end up
+              (market -> shipping mode -> measured outcome).
+
+The outcome band is computed from days_for_shipping_real against
+days_for_shipment_scheduled, so it is a measured result rather than the
+late_delivery_risk_flag column, which is only a risk marker.
 """
 
 import dash
@@ -11,99 +18,142 @@ from dash import dcc, html
 import plotly.graph_objects as go
 
 import db
-import geo
 import theme as T
 
 dash.register_page(__name__, path="/network", name="Network")
 
-COUNTRIES = db.country_revenue()
-TOT = db.totals()
+HIER = db.market_region_country()
+FLOW = db.flow_market_mode_outcome()
+MODES = db.mode_promise()
 
-MARKETS = db.q(
-    """
-    SELECT m.market_name              AS market,
-           SUM(oi.sales)              AS revenue,
-           COUNT(DISTINCT o.order_id) AS orders
-    FROM   order_item oi
-    JOIN   orders o  ON o.order_id = oi.order_id
-    JOIN   shipping_destination sd ON sd.destination_id = o.destination_id
-    JOIN   region r  ON r.region_id  = sd.region_id
-    JOIN   market m  ON m.market_id  = r.market_id
-    GROUP  BY m.market_id, m.market_name
-    ORDER  BY revenue DESC
-    """
+N_COUNTRIES = int(HIER["country"].nunique())
+N_REGIONS = int(HIER["region"].nunique())
+N_MARKETS = int(HIER["market"].nunique())
+LATE_RATE = float(
+    FLOW.loc[FLOW["outcome"] == "Late", "orders"].sum() / FLOW["orders"].sum()
 )
 
-N_COUNTRIES = int(COUNTRIES["country_id"].nunique())
 
+def sunburst() -> go.Figure:
+    labels, parents, values, custom = [], [], [], []
 
-def globe_points(n: int = 14) -> str:
-    """Encode the top mapped countries as name~lat~lon~weight, pipe separated."""
-    rows, mx = [], None
-    for _, r in COUNTRIES.iterrows():
-        ll = geo.lookup(r["country"])
-        if ll is None:
-            continue
-        if mx is None:
-            mx = float(r["revenue"])
-        rows.append((str(r["country"]), ll[0], ll[1],
-                     float(r["revenue"]) / mx, float(r["revenue"])))
-        if len(rows) >= n:
-            break
-    return "|".join(f"{a}~{b}~{c}~{d:.4f}~{e:.0f}" for a, b, c, d, e in rows)
+    for mk, g in HIER.groupby("market", sort=False):
+        labels.append(mk); parents.append(""); values.append(float(g["revenue"].sum()))
+        custom.append("Market")
 
+    for (mk, rg), g in HIER.groupby(["market", "region"], sort=False):
+        labels.append(rg); parents.append(mk); values.append(float(g["revenue"].sum()))
+        custom.append("Region")
 
-GLOBE_POINTS = globe_points()
-N_MAPPED = len(GLOBE_POINTS.split("|")) if GLOBE_POINTS else 0
-TOP10_SHARE = float(COUNTRIES["revenue"].head(10).sum() / COUNTRIES["revenue"].sum())
+    for _, r in HIER.iterrows():
+        labels.append(r["country"]); parents.append(r["region"])
+        values.append(float(r["revenue"])); custom.append("Country")
 
-
-def market_donut() -> go.Figure:
     fig = go.Figure(
-        go.Pie(
-            labels=MARKETS["market"],
-            values=MARKETS["revenue"],
-            hole=0.62,
-            sort=False,
-            marker=dict(colors=T.CAT[: len(MARKETS)], line=dict(color=T.BG, width=2)),
-            textinfo="percent",
-            textfont=dict(size=12, color=T.TXT),
-            hovertemplate="<b>%{label}</b><br>%{value:$,.0f}<br>%{percent}<extra></extra>",
+        go.Sunburst(
+            labels=labels, parents=parents, values=values,
+            customdata=custom,
+            branchvalues="total",
+            maxdepth=2,
+            insidetextorientation="radial",
+            marker=dict(
+                colors=values,
+                colorscale=[[0, "#3B1B57"], [0.35, T.V2], [0.7, T.M2], [1, T.M1]],
+                line=dict(color=T.BG, width=1.4),
+            ),
+            hovertemplate=(
+                "<b>%{label}</b><br>%{customdata}<br>"
+                "%{value:$,.0f}<br>%{percentRoot:.1%} of total<extra></extra>"
+            ),
         )
     )
-    T.style(fig, height=300)
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(
-            orientation="v", x=1.02, y=0.5, xanchor="left", yanchor="middle",
-            font=dict(size=12, color=T.DIM),
-        ),
-        margin=dict(l=8, r=118, t=8, b=8),
-    )
+    T.style(fig, height=440)
+    fig.update_layout(margin=dict(l=6, r=6, t=6, b=6),
+                      font=dict(color=T.TXT, size=12))
     return fig
 
 
-def country_bars() -> go.Figure:
-    d = COUNTRIES.head(12)
+def sankey() -> go.Figure:
+    markets = list(FLOW["market"].drop_duplicates())
+    modes = list(FLOW["mode"].drop_duplicates())
+    order = ["Early", "On time", "Late"]
+    outcomes = [o for o in order if o in set(FLOW["outcome"])]
+
+    nodes = markets + modes + outcomes
+    idx = {n: i for i, n in enumerate(nodes)}
+
+    node_colours = (
+        [T.V1] * len(markets) + [T.M2] * len(modes)
+        + [T.M1 if o == "Late" else T.MINT for o in outcomes]
+    )
+
+    src, tgt, val, lcol = [], [], [], []
+
+    a = FLOW.groupby(["market", "mode"], as_index=False)["orders"].sum()
+    for _, r in a.iterrows():
+        src.append(idx[r["market"]]); tgt.append(idx[r["mode"]])
+        val.append(int(r["orders"])); lcol.append("rgba(177,74,237,.26)")
+
+    b = FLOW.groupby(["mode", "outcome"], as_index=False)["orders"].sum()
+    for _, r in b.iterrows():
+        src.append(idx[r["mode"]]); tgt.append(idx[r["outcome"]])
+        val.append(int(r["orders"]))
+        lcol.append("rgba(255,0,128,.30)" if r["outcome"] == "Late"
+                    else "rgba(0,229,160,.22)")
+
     fig = go.Figure(
-        go.Bar(
-            x=d["revenue"], y=d["country"], orientation="h",
-            marker=dict(color=T.MINT, opacity=0.85, line=dict(width=0)),
-            text=[T.money(v) for v in d["revenue"]],
-            textposition="outside",
-            textfont=dict(size=11, color=T.DIM),
-            cliponaxis=False,
-            hovertemplate="<b>%{y}</b><br>%{x:$,.0f}<extra></extra>",
+        go.Sankey(
+            arrangement="snap",
+            node=dict(
+                label=nodes, pad=17, thickness=17,
+                color=node_colours,
+                line=dict(color=T.BG, width=0.5),
+                hovertemplate="<b>%{label}</b><br>%{value:,} orders<extra></extra>",
+            ),
+            link=dict(
+                source=src, target=tgt, value=val, color=lcol,
+                hovertemplate="%{source.label} to %{target.label}"
+                              "<br>%{value:,} orders<extra></extra>",
+            ),
         )
     )
-    T.style(fig, height=400)
+    T.style(fig, height=470)
+    fig.update_layout(margin=dict(l=6, r=6, t=6, b=6),
+                      font=dict(color=T.TXT, size=12.5))
+    return fig
+
+
+def promise_gap() -> go.Figure:
+    d = MODES.copy()
+    fig = go.Figure()
+    fig.add_bar(
+        y=d["mode"], x=d["promised"], orientation="h", name="Promised",
+        marker=dict(color=T.V2, line=dict(width=0)),
+        hovertemplate="<b>%{y}</b><br>promised %{x:.1f} days<extra></extra>",
+    )
+    fig.add_bar(
+        y=d["mode"], x=d["actual"], orientation="h", name="Actual",
+        marker=dict(color=T.M1, line=dict(width=0)),
+        hovertemplate="<b>%{y}</b><br>actual %{x:.1f} days<extra></extra>",
+    )
+    for _, r in d.iterrows():
+        fig.add_annotation(
+            x=max(r["promised"], r["actual"]) + 0.22, y=r["mode"],
+            text=f"{r['late_rate']:.0%} late", showarrow=False,
+            xanchor="left", font=dict(color=T.DIM, size=11),
+        )
+    T.style(fig, height=300)
     fig.update_layout(
-        margin=dict(l=8, r=72, t=8, b=36),
+        barmode="group", bargap=0.28, bargroupgap=0.08,
+        showlegend=True,
+        legend=dict(orientation="h", y=1.16, x=0, font=dict(color=T.DIM, size=11.5)),
+        margin=dict(l=8, r=96, t=34, b=36),
         yaxis=dict(autorange="reversed", gridcolor="rgba(0,0,0,0)",
                    linecolor="rgba(0,0,0,0)", automargin=True,
                    tickfont=dict(size=12)),
-        xaxis=dict(gridcolor=T.BORD, zeroline=False, linecolor="rgba(0,0,0,0)",
-                   tickprefix="$", tickformat="~s", tickfont=dict(size=11)),
+        xaxis=dict(title=dict(text="days", font=dict(size=11, color=T.DIM)),
+                   gridcolor=T.BORD, zeroline=False,
+                   linecolor="rgba(0,0,0,0)", tickfont=dict(size=11)),
     )
     return fig
 
@@ -112,46 +162,41 @@ layout = html.Div(
     className="page",
     children=[
         T.page_head(
-            "Global distribution network",
-            f"DataCo ships to {N_COUNTRIES} countries across "
-            f"{len(MARKETS)} markets. The globe below is illustrative; "
-            "every figure beside it comes from the database.",
+            "Distribution network",
+            f"{N_MARKETS} markets, {N_REGIONS} regions, {N_COUNTRIES} destination "
+            "countries. The flow diagram traces how orders reach customers and "
+            "whether they arrive on time.",
         ),
         html.Div(
             className="kpi-row kpi-row-tight",
             children=[
-                T.kpi(f"{N_COUNTRIES}", "DESTINATION COUNTRIES"),
-                T.kpi(f"{len(MARKETS)}", "MARKETS", T.MINT, T.MINT),
-                T.kpi(f"{TOP10_SHARE:.1%}", "FROM TOP 10 COUNTRIES", T.MINT, T.MINT),
-                T.kpi(f"{TOT['orders']:,}", "ORDERS SHIPPED"),
+                T.kpi(f"{N_MARKETS}", "MARKETS"),
+                T.kpi(f"{N_REGIONS}", "REGIONS"),
+                T.kpi(f"{N_COUNTRIES}", "COUNTRIES", T.MINT, T.MINT),
+                T.kpi(f"{LATE_RATE:.1%}", "ORDERS ARRIVE LATE", T.M1, T.M1),
             ],
         ),
         html.Div(
             className="panel-grid",
             children=[
                 T.panel(
-                    "Network in motion",
-                    "One turn every 30 seconds. A shipment travels between the highest-revenue countries, one leg at a time.",
-                    html.Div(
-                        id="globe-data",
-                        className="globe-wrap",
-                        **{"data-points": GLOBE_POINTS},
-                    ),
-                    html.Div(
-                        f"Hover a bubble for its revenue \u2014 rotation pauses "
-                        f"while you read. Top {N_MAPPED} countries shown.",
-                        className="globe-note",
-                    ),
+                    "Revenue hierarchy",
+                    "Market, then region, then country. Ring area is revenue - "
+                    "click any ring to open it, click the centre to go back.",
+                    dcc.Graph(figure=sunburst(), config={"displayModeBar": False}),
                 ),
                 T.panel(
-                    "Revenue by market",
-                    "Share of revenue across the five DataCo markets.",
-                    dcc.Graph(figure=market_donut(), config={"displayModeBar": False}),
+                    "Promise against delivery",
+                    "Average days promised next to average days actually taken, "
+                    "per shipping mode.",
+                    dcc.Graph(figure=promise_gap(), config={"displayModeBar": False}),
                 ),
                 T.panel(
-                    "Top twelve destination countries",
-                    f"Out of {N_COUNTRIES} countries served.",
-                    dcc.Graph(figure=country_bars(), config={"displayModeBar": False}),
+                    "Order flow and outcome",
+                    "Every order runs left to right: which market it came from, "
+                    "which shipping mode carried it, and whether it beat, met or "
+                    "missed the promised date. Band thickness is order count.",
+                    dcc.Graph(figure=sankey(), config={"displayModeBar": False}),
                     wide=True,
                 ),
             ],
@@ -159,11 +204,11 @@ layout = html.Div(
         html.Div(
             className="note",
             children=[
-                html.Strong("On the globe. "),
-                "Bubble positions and sizes come from the data: each marker is a "
-                "destination country, sized by its revenue. The arcs between them "
-                "are illustrative - the dataset records where orders went, not "
-                "where they shipped from, so no real origin exists to draw.",
+                html.Strong("How late is measured. "),
+                "An order counts as late when days_for_shipping_real exceeds "
+                "days_for_shipment_scheduled. The dataset also carries a "
+                "late_delivery_risk_flag column, but that marks predicted risk, "
+                "not what happened, so it is not used for any figure here.",
             ],
         ),
     ],

@@ -11,9 +11,6 @@ import theme as T
 
 dash.register_page(__name__, path="/", name="Home")
 
-# How many categories to plot individually before collapsing the rest.
-TOP_N = 15
-
 CATS = db.category_revenue()
 TOT = db.totals()
 
@@ -24,50 +21,55 @@ TOP1_SHARE = float(CATS.iloc[0]["share"])
 DUPES = db.duplicate_labels()
 
 
-def bloom_data():
-    head = CATS.head(TOP_N)[["category", "revenue"]].copy()
-    tail = CATS.iloc[TOP_N:]
-    if len(tail):
-        head.loc[len(head)] = [
-            f"Other ({len(tail)} categories)",
-            float(tail["revenue"].sum()),
-        ]
-    return head.reset_index(drop=True)
+def treemap() -> go.Figure:
+    """
+    Department -> category treemap.
 
+    A treemap suits this data far better than a radial chart: revenue is
+    extremely concentrated, so on a radial scale most categories collapse
+    into invisible slivers. Area encoding keeps every category readable
+    while still showing the concentration.
+    """
+    d = CATS.copy()
+    d["department_name"] = d["department_name"].fillna("Unassigned")
 
-def bloom_figure() -> go.Figure:
-    data = bloom_data()
-    n = len(data)
-    colours = [
-        T.M1 if i < 3 else T.M2 if i < 9 else T.V1 if i < n - 1 else T.V2
-        for i in range(n)
-    ]
+    labels, parents, values, kinds = [], [], [], []
+
+    for dept, g in d.groupby("department_name", sort=False):
+        labels.append(dept); parents.append(""); values.append(float(g["revenue"].sum()))
+        kinds.append("Department")
+
+    for _, r in d.iterrows():
+        labels.append(r["category_name"])
+        parents.append(r["department_name"])
+        values.append(float(r["revenue"]))
+        kinds.append("Category")
+
     fig = go.Figure(
-        go.Barpolar(
-            r=data["revenue"],
-            theta=[i * 360 / n for i in range(n)],
-            width=[360 / n * 0.72] * n,
-            marker=dict(color=colours, line=dict(width=0)),
-            customdata=data["category"],
-            hovertemplate="<b>%{customdata}</b><br>$%{r:,.0f}<extra></extra>",
+        go.Treemap(
+            labels=labels, parents=parents, values=values,
+            customdata=kinds,
+            branchvalues="total",
+            tiling=dict(packing="squarify", pad=2),
+            marker=dict(
+                colors=values,
+                colorscale=[[0, "#241436"], [0.25, T.V2], [0.55, T.V1],
+                            [0.8, T.M2], [1, T.M1]],
+                line=dict(color=T.BG, width=1.6),
+                cornerradius=6,
+            ),
+            textinfo="label+percent root",
+            textfont=dict(size=13, color="#ffffff",
+                          family="Segoe UI, Arial, sans-serif"),
+            hovertemplate=(
+                "<b>%{label}</b><br>%{customdata}<br>"
+                "%{value:$,.0f}<br>%{percentRoot:.1%} of revenue<extra></extra>"
+            ),
+            pathbar=dict(visible=True, thickness=18),
         )
     )
     T.style(fig, height=520)
-    fig.update_layout(
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            hole=0.26,
-            radialaxis=dict(
-                showticklabels=False, ticks="", gridcolor=T.BORD, showline=False
-            ),
-            angularaxis=dict(
-                showticklabels=False,
-                ticks="",
-                gridcolor="rgba(0,0,0,0)",
-                linecolor=T.BORD,
-            ),
-        )
-    )
+    fig.update_layout(margin=dict(l=0, r=0, t=22, b=0))
     return fig
 
 
@@ -122,19 +124,14 @@ layout = html.Div(
             children=[
                 html.Div(className="bloom-glow"),
                 dcc.Graph(
-                    figure=bloom_figure(),
+                    figure=treemap(),
                     config={"displayModeBar": False},
                     className="bloom",
                 ),
                 html.Div(
-                    [
-                        html.Div(str(N_CATS), className="hub-value"),
-                        html.Div("CATEGORIES", className="hub-label"),
-                    ],
-                    className="hub",
-                ),
-                html.Div(
-                    f"TOP {TOP_N} CATEGORIES + OTHER  \u00b7  HOVER FOR DETAIL",
+                    f"{len(CATS['department_name'].dropna().unique())} DEPARTMENTS  "
+                    f"\u00b7  {N_CATS} CATEGORIES  \u00b7  AREA IS REVENUE  "
+                    f"\u00b7  CLICK TO OPEN A DEPARTMENT",
                     className="bloom-caption",
                 ),
             ],

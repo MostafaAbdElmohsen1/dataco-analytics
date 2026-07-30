@@ -129,3 +129,71 @@ def table(df, max_rows: int = 20, status_col: str | None = None):
             ),
         ],
     )
+
+
+# ---------------------------------------------------------------------
+# Pill filter groups
+#
+# Built from real buttons plus a dcc.Store rather than dcc.RadioItems,
+# so the selected state is set from Python and never depends on a CSS
+# :has() selector being supported by the browser.
+#
+# Usage inside a page module:
+#
+#     T.pill_group("year", "YEAR", ["All", "2015", "2016"])
+#     T.register_pill_group("year", ["All", "2015", "2016"])
+#
+# Then read the value with Input(T.store_id("year"), "data").
+# ---------------------------------------------------------------------
+from dash import ALL, Input, Output, State, callback, ctx, dcc  # noqa: E402
+
+
+def store_id(gid: str) -> str:
+    return f"pillstore-{gid}"
+
+
+def pill_group(gid: str, label: str, options: list[str], value: str | None = None):
+    value = value if value is not None else options[0]
+    return html.Div(
+        className="filter",
+        children=[
+            dcc.Store(id=store_id(gid), data=value),
+            html.Div(label, className="filter-label"),
+            html.Div(
+                className="pills",
+                children=[
+                    html.Button(
+                        opt,
+                        id={"type": f"pill-{gid}", "index": opt},
+                        n_clicks=0,
+                        className="pill pill-on" if opt == value else "pill",
+                    )
+                    for opt in options
+                ],
+            ),
+        ],
+    )
+
+
+def register_pill_group(gid: str, options: list[str], default: str | None = None):
+    default = default if default is not None else options[0]
+
+    @callback(
+        Output(store_id(gid), "data"),
+        Input({"type": f"pill-{gid}", "index": ALL}, "n_clicks"),
+        State(store_id(gid), "data"),
+        prevent_initial_call=True,
+    )
+    def _pick(_clicks, current):
+        trig = ctx.triggered_id
+        if not isinstance(trig, dict):
+            return current
+        return trig.get("index", current)
+
+    @callback(
+        Output({"type": f"pill-{gid}", "index": ALL}, "className"),
+        Input(store_id(gid), "data"),
+    )
+    def _mark(value):
+        value = value if value is not None else default
+        return ["pill pill-on" if o == value else "pill" for o in options]

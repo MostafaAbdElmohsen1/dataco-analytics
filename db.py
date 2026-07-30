@@ -498,3 +498,112 @@ def category_pareto(year=None, market=None, segment=None):
     )
     df["cum_share"] = df["revenue"].cumsum() / df["revenue"].sum()
     return df
+
+
+# ---------------------------------------------------------------------
+# Hierarchy + flow queries (Network page)
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def market_region_country() -> pd.DataFrame:
+    """Three-level hierarchy: market -> region -> country, with revenue."""
+    return q(
+        """
+        SELECT m.market_name         AS market,
+               r.region_name         AS region,
+               oc.order_country_name AS country,
+               SUM(oi.sales)         AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders
+        FROM   order_item oi
+        JOIN   orders o  ON o.order_id = oi.order_id
+        JOIN   shipping_destination sd ON sd.destination_id = o.destination_id
+        JOIN   region r  ON r.region_id = sd.region_id
+        JOIN   market m  ON m.market_id = r.market_id
+        JOIN   order_country oc ON oc.order_country_id = sd.order_country_id
+        GROUP  BY m.market_id, m.market_name, r.region_id, r.region_name,
+                  oc.order_country_id, oc.order_country_name
+        ORDER  BY revenue DESC
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def flow_market_mode_outcome() -> pd.DataFrame:
+    """
+    Order flow for a Sankey: market -> shipping mode -> delivery outcome.
+
+    Outcome is measured (real days vs scheduled days), not taken from
+    late_delivery_risk_flag, which is a risk marker rather than a result.
+    """
+    return q(
+        """
+        SELECT m.market_name        AS market,
+               sm.shipping_mode_name AS mode,
+               CASE
+                   WHEN o.days_for_shipping_real
+                        > o.days_for_shipment_scheduled THEN 'Late'
+                   WHEN o.days_for_shipping_real
+                        < o.days_for_shipment_scheduled THEN 'Early'
+                   ELSE 'On time'
+               END                  AS outcome,
+               COUNT(DISTINCT o.order_id) AS orders,
+               SUM(oi.sales)        AS revenue
+        FROM   order_item oi
+        JOIN   orders o  ON o.order_id = oi.order_id
+        JOIN   shipping_mode sm ON sm.shipping_mode_id = o.shipping_mode_id
+        JOIN   shipping_destination sd ON sd.destination_id = o.destination_id
+        JOIN   region r  ON r.region_id = sd.region_id
+        JOIN   market m  ON m.market_id = r.market_id
+        GROUP  BY m.market_id, m.market_name,
+                  sm.shipping_mode_id, sm.shipping_mode_name, outcome
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def mode_promise() -> pd.DataFrame:
+    """Promised vs actual shipping days for each shipping mode."""
+    return q(
+        """
+        SELECT sm.shipping_mode_name        AS mode,
+               AVG(o.days_for_shipment_scheduled) AS promised,
+               AVG(o.days_for_shipping_real)      AS actual,
+               COUNT(DISTINCT o.order_id)         AS orders,
+               AVG(CASE WHEN o.days_for_shipping_real
+                             > o.days_for_shipment_scheduled
+                        THEN 1.0 ELSE 0.0 END)    AS late_rate
+        FROM   orders o
+        JOIN   shipping_mode sm ON sm.shipping_mode_id = o.shipping_mode_id
+        GROUP  BY sm.shipping_mode_id, sm.shipping_mode_name
+        ORDER  BY promised
+        """
+    )
+
+
+# ---------------------------------------------------------------------
+# Map page
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def country_detail() -> pd.DataFrame:
+    """Per-country revenue, profit, orders and measured late rate."""
+    return q(
+        """
+        SELECT oc.order_country_name AS country,
+               m.market_name         AS market,
+               SUM(oi.sales)         AS revenue,
+               SUM(oi.profit_amount) AS profit,
+               COUNT(DISTINCT o.order_id) AS orders,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               AVG(CASE WHEN o.days_for_shipping_real
+                             > o.days_for_shipment_scheduled
+                        THEN 1.0 ELSE 0.0 END) AS late_rate,
+               AVG(o.days_for_shipping_real)   AS avg_days
+        FROM   order_item oi
+        JOIN   orders o  ON o.order_id = oi.order_id
+        JOIN   shipping_destination sd ON sd.destination_id = o.destination_id
+        JOIN   region r  ON r.region_id = sd.region_id
+        JOIN   market m  ON m.market_id = r.market_id
+        JOIN   order_country oc ON oc.order_country_id = sd.order_country_id
+        GROUP  BY oc.order_country_id, oc.order_country_name, m.market_name
+        ORDER  BY revenue DESC
+        """
+    )

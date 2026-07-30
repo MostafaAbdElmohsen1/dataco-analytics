@@ -17,23 +17,13 @@ dash.register_page(__name__, path="/executive", name="Executive")
 OPTS = db.filter_options()
 
 
-def dd(cid: str, label: str, values: list[str]):
-    """Segmented pill control. Fully styleable, unlike a native dropdown."""
-    return html.Div(
-        className="filter",
-        children=[
-            html.Label(label, className="filter-label"),
-            dcc.RadioItems(
-                id=cid,
-                options=[{"label": "All", "value": "All"}]
-                + [{"label": str(v), "value": str(v)} for v in values],
-                value="All",
-                className="pills",
-                inputClassName="pill-input",
-                labelClassName="pill",
-            ),
-        ],
-    )
+YEARS = ["All"] + [str(v) for v in OPTS["years"]]
+MARKETS = ["All"] + [str(v) for v in OPTS["markets"]]
+SEGMENTS = ["All"] + [str(v) for v in OPTS["segments"]]
+
+T.register_pill_group("year", YEARS)
+T.register_pill_group("market", MARKETS)
+T.register_pill_group("segment", SEGMENTS)
 
 
 layout = html.Div(
@@ -45,14 +35,14 @@ layout = html.Div(
             "Every figure below responds to the filters.",
         ),
         html.Div(
-            className="filter-bar",
+            className="filter-bar filter-sticky",
             children=[
                 html.Div(
                     className="filter-grid",
                     children=[
-                        dd("f-year", "YEAR", OPTS["years"]),
-                        dd("f-market", "MARKET", OPTS["markets"]),
-                        dd("f-segment", "CUSTOMER SEGMENT", OPTS["segments"]),
+                        T.pill_group("year", "YEAR", YEARS),
+                        T.pill_group("market", "MARKET", MARKETS),
+                        T.pill_group("segment", "CUSTOMER SEGMENT", SEGMENTS),
                     ],
                 ),
                 html.Div(
@@ -112,9 +102,9 @@ layout = html.Div(
 
 # ---------------------------------------------------------------------
 @callback(
-    Output("f-year", "value"),
-    Output("f-market", "value"),
-    Output("f-segment", "value"),
+    Output(T.store_id("year"), "data", allow_duplicate=True),
+    Output(T.store_id("market"), "data", allow_duplicate=True),
+    Output(T.store_id("segment"), "data", allow_duplicate=True),
     Input("f-reset", "n_clicks"),
     prevent_initial_call=True,
 )
@@ -130,9 +120,9 @@ def reset_filters(_):
     Output("g-delay", "figure"),
     Output("g-country", "figure"),
     Output("t-products", "children"),
-    Input("f-year", "value"),
-    Input("f-market", "value"),
-    Input("f-segment", "value"),
+    Input(T.store_id("year"), "data"),
+    Input(T.store_id("market"), "data"),
+    Input(T.store_id("segment"), "data"),
 )
 def refresh(year, market, segment):
     k = db.exec_kpis(year, market, segment)
@@ -157,15 +147,15 @@ def refresh(year, market, segment):
     trend.add_bar(
         x=m["month"], y=m["revenue"], name="Revenue",
         marker=dict(color=T.V2, line=dict(width=0)),
-        hovertemplate="%{x}<br>Revenue %{y:$,.0f}<extra></extra>",
+        hovertemplate="<b>%{y:$,.0f}</b><extra>Revenue</extra>",
     )
     trend.add_scatter(
         x=m["month"], y=m["profit"], name="Profit", mode="lines+markers",
         line=dict(color=T.M1, width=2.6),
         marker=dict(size=5, color=T.M1),
-        hovertemplate="%{x}<br>Profit %{y:$,.0f}<extra></extra>",
+        hovertemplate="<b>%{y:$,.0f}</b><extra>Profit</extra>",
     )
-    T.style(trend, height=240, hovermode="x unified", bargap=0.30)
+    T.style(trend, height=250, hovermode="x unified", bargap=0.30)
     trend.update_layout(
         margin=dict(l=70, r=16, t=8, b=44),
         xaxis=dict(type="date", gridcolor="rgba(0,0,0,0)", linecolor=T.BORD,
@@ -186,7 +176,7 @@ def refresh(year, market, segment):
                 color=[T.M1 if v <= 0.884 else T.V2 for v in show["cum_share"]],
                 line=dict(width=0),
             ),
-            name="Revenue",
+            name="",
             hovertemplate="<b>%{x}</b><br>%{y:$,.0f}<extra></extra>",
         )
         pareto.add_scatter(
