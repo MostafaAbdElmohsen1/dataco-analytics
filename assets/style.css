@@ -757,3 +757,19 @@ button.pill.pill-on::before {
 
 /* treemap breadcrumb bar */
 .treemap .pathbar text { fill: var(--dim) !important; }
+
+/* ===================================================================
+   Plotly animation controls (racing bar)
+   =================================================================== */
+.updatemenu-button rect {
+  fill: rgba(21, 12, 34, .92) !important;
+  stroke: var(--bord) !important;
+}
+.updatemenu-button:hover rect { stroke: var(--m1) !important; }
+.updatemenu-button text { fill: #e8dff5 !important; }
+
+.slider-rail-touch-rect,
+.slider-rail-rect { fill: var(--bord) !important; }
+.slider-grip-rect { fill: var(--m1) !important; }
+.slider-tick-line { stroke: var(--bord) !important; }
+.slider-label text { fill: var(--dim) !important; }

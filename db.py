@@ -607,3 +607,145 @@ def country_detail() -> pd.DataFrame:
         ORDER  BY revenue DESC
         """
     )
+
+
+# ---------------------------------------------------------------------
+# Racing bar (Home page)
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def category_cumulative_by_month() -> pd.DataFrame:
+    """
+    Cumulative revenue per category at the end of every month.
+
+    Cumulative rather than monthly: monthly figures jump around and the
+    ranking flickers, whereas a running total makes the bars grow and
+    overtake each other, which is what the race is meant to show.
+    """
+    raw = q(
+        """
+        SELECT substr(o.order_date, 1, 7) AS month,
+               c.category_id             AS category_id,
+               c.category_name           AS category_name,
+               d.department_name         AS department_name,
+               SUM(oi.sales)             AS revenue
+        FROM   order_item oi
+        JOIN   orders o    ON o.order_id     = oi.order_id
+        JOIN   product p   ON p.product_id   = oi.product_id
+        JOIN   category c  ON c.category_id  = p.category_id
+        LEFT JOIN department d ON d.department_id = c.department_id
+        WHERE  o.order_date IS NOT NULL
+        GROUP  BY month, c.category_id, c.category_name, d.department_name
+        """
+    )
+    if not len(raw):
+        return raw
+
+    dupes = raw[["category_id", "category_name"]].drop_duplicates()
+    dup_names = set(
+        dupes["category_name"][dupes["category_name"].duplicated(keep=False)]
+    )
+    raw["label"] = [
+        f"{n} ({d})" if n in dup_names else n
+        for n, d in zip(raw["category_name"], raw["department_name"].fillna("?"))
+    ]
+
+    months = sorted(raw["month"].unique())
+    labels = raw["label"].unique()
+
+    grid = (
+        raw.pivot_table(index="month", columns="label",
+                        values="revenue", aggfunc="sum")
+        .reindex(months)
+        .reindex(columns=labels)
+        .fillna(0.0)
+        .cumsum()
+    )
+    out = grid.reset_index().melt(id_vars="month", var_name="label",
+                                 value_name="cum_revenue")
+    return out
+
+
+# ---------------------------------------------------------------------
+# Orders & risk page
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def order_status_mix() -> pd.DataFrame:
+    return q(
+        """
+        SELECT os.order_status_name AS status,
+               COUNT(DISTINCT o.order_id) AS orders,
+               SUM(oi.sales)        AS revenue
+        FROM   orders o
+        JOIN   order_status os ON os.order_status_id = o.order_status_id
+        LEFT JOIN order_item oi ON oi.order_id = o.order_id
+        GROUP  BY os.order_status_id, os.order_status_name
+        ORDER  BY orders DESC
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def loss_makers() -> pd.DataFrame:
+    """Products whose total profit is negative."""
+    return q(
+        """
+        SELECT p.product_name    AS product,
+               c.category_name   AS category,
+               SUM(oi.sales)     AS revenue,
+               SUM(oi.profit_amount) AS profit,
+               COUNT(*)          AS lines
+        FROM   order_item oi
+        JOIN   product  p ON p.product_id  = oi.product_id
+        JOIN   category c ON c.category_id = p.category_id
+        GROUP  BY p.product_id, p.product_name, c.category_name
+        HAVING SUM(oi.profit_amount) < 0
+        ORDER  BY profit ASC
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def loss_line_share() -> dict:
+    r = q(
+        """
+        SELECT COUNT(*)                                   AS lines_total,
+               SUM(CASE WHEN profit_amount < 0 THEN 1 ELSE 0 END) AS lines_loss,
+               SUM(CASE WHEN profit_amount < 0
+                        THEN profit_amount ELSE 0 END)     AS loss_value,
+               SUM(CASE WHEN profit_amount > 0
+                        THEN profit_amount ELSE 0 END)     AS gain_value
+        FROM   order_item
+        """
+    ).iloc[0]
+    total = int(r["lines_total"]) or 1
+    return {
+        "lines_total": total,
+        "lines_loss": int(r["lines_loss"] or 0),
+        "share": int(r["lines_loss"] or 0) / total,
+        "loss_value": float(r["loss_value"] or 0),
+        "gain_value": float(r["gain_value"] or 0),
+    }
+
+
+@lru_cache(maxsize=1)
+def discount_bands() -> pd.DataFrame:
+    """Margin and volume by discount band."""
+    return q(
+        """
+        SELECT CASE
+                   WHEN discount_rate <= 0.001 THEN '0%'
+                   WHEN discount_rate < 0.05  THEN '0-5%'
+                   WHEN discount_rate < 0.10  THEN '5-10%'
+                   WHEN discount_rate < 0.15  THEN '10-15%'
+                   WHEN discount_rate < 0.20  THEN '15-20%'
+                   WHEN discount_rate < 0.25  THEN '20-25%'
+                   ELSE '25%+'
+               END                       AS band,
+               COUNT(*)                  AS lines,
+               SUM(sales)                AS revenue,
+               SUM(profit_amount)        AS profit,
+               AVG(discount_rate)        AS avg_rate
+        FROM   order_item
+        GROUP  BY band
+        """
+    )
