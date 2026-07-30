@@ -749,3 +749,35 @@ def discount_bands() -> pd.DataFrame:
         GROUP  BY band
         """
     )
+
+
+@lru_cache(maxsize=1)
+def city_points() -> pd.DataFrame:
+    """
+    City-level revenue using the coordinates stored in customer_address.
+
+    These are customer locations, which is not the same thing as the
+    shipping destination country in shipping_destination - the two are
+    reported separately rather than mixed.
+    """
+    return q(
+        """
+        SELECT ca.city                       AS city,
+               ca.state                      AS state,
+               ca.country                    AS country,
+               AVG(ca.latitude)              AS lat,
+               AVG(ca.longitude)             AS lon,
+               SUM(oi.sales)                 AS revenue,
+               COUNT(DISTINCT o.order_id)    AS orders,
+               COUNT(DISTINCT cu.customer_id) AS customers
+        FROM   order_item oi
+        JOIN   orders   o  ON o.order_id  = oi.order_id
+        JOIN   customer cu ON cu.customer_id = o.customer_id
+        JOIN   customer_address ca
+               ON ca.customer_address_id = cu.customer_address_id
+        WHERE  ca.latitude IS NOT NULL AND ca.longitude IS NOT NULL
+        GROUP  BY ca.city, ca.state, ca.country
+        HAVING SUM(oi.sales) > 0
+        ORDER  BY revenue DESC
+        """
+    )

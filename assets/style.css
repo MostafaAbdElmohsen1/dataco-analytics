@@ -773,3 +773,91 @@ button.pill.pill-on::before {
 .slider-grip-rect { fill: var(--m1) !important; }
 .slider-tick-line { stroke: var(--bord) !important; }
 .slider-label text { fill: var(--dim) !important; }
+
+/* ===================================================================
+   filter bar v4 - compact
+   =================================================================== */
+.filter-sticky {
+  margin: -6px 0 22px;
+  padding: 13px 16px 11px;
+  border-radius: 12px;
+}
+
+.filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 22px;
+}
+
+.filter-label {
+  margin-bottom: 6px;
+  font-size: 9px;
+  letter-spacing: 2.2px;
+}
+
+.pills { gap: 5px; }
+
+button.pill {
+  padding: 5px 11px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+button.pill.pill-on {
+  box-shadow: 0 0 0 2px rgba(255, 0, 128, .18);
+}
+button.pill.pill-on::before {
+  margin-right: 5px;
+  font-size: 9.5px;
+}
+
+.filter-foot {
+  padding-top: 10px;
+  margin-top: 2px;
+}
+.filter-summary { font-size: 11.5px; }
+
+.btn-reset {
+  padding: 6px 13px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+
+.kpi-row-tight { gap: 22px; margin-bottom: 26px; }
+.kpi-row-tight .kpi-value { font-size: 27px; }
+.kpi-row-tight .kpi-label { font-size: 10.5px; letter-spacing: 2px; }
+
+/* ===================================================================
+   cover globe
+   =================================================================== */
+.globe-stage {
+  position: relative;
+  width: 100%;
+  height: 540px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.globe-stage.is-grabbing { cursor: grabbing; }
+.globe-stage canvas { display: block; width: 100%; height: 100%; }
+
+.globe-hint {
+  margin-top: -14px;
+  text-align: center;
+  color: #5f5478;
+  font-size: 10.5px;
+  letter-spacing: 4px;
+  pointer-events: none;
+}
+
+.cover-foot {
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--bord);
+  color: #6f6489;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .globe-stage { height: 360px; }
+}

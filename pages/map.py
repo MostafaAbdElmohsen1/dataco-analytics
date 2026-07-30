@@ -40,8 +40,21 @@ COVERAGE = float(MAPPED["revenue"].sum() / TOTAL_REV) if TOTAL_REV else 0.0
 
 MARKETS = ["All"] + sorted(DETAIL["market"].dropna().unique().tolist())
 METRIC_LABELS = {"Revenue": "revenue", "Margin": "margin", "Late rate": "late_rate"}
+LEVELS = ["Countries", "Cities"]
+
+# Where to centre and how far to zoom when a market is picked.
+SCOPE = {
+    "All":          dict(lat=12,  lon=8,    scale=1.0),
+    "Africa":       dict(lat=2,   lon=20,   scale=2.3),
+    "Europe":       dict(lat=54,  lon=16,   scale=3.4),
+    "LATAM":        dict(lat=-14, lon=-62,  scale=1.9),
+    "Pacific Asia": dict(lat=10,  lon=112,  scale=1.9),
+    "USCA":         dict(lat=46,  lon=-98,  scale=2.2),
+}
+CITIES = db.city_points()
 METRICS = list(METRIC_LABELS.keys())
 
+T.register_pill_group("level", LEVELS)
 T.register_pill_group("metric", METRICS)
 T.register_pill_group("mkt", MARKETS)
 
@@ -71,41 +84,103 @@ def hover_card(r) -> str:
     )
 
 
-def build_map(market: str, metric: str) -> go.Figure:
+def _geo(market: str) -> dict:
+    sc = SCOPE.get(market, SCOPE["All"])
+    return dict(
+        projection=dict(type="natural earth",
+                        scale=sc["scale"],
+                        rotation=dict(lon=sc["lon"])),
+        center=dict(lat=sc["lat"], lon=sc["lon"]),
+        bgcolor="rgba(0,0,0,0)",
+        showland=True, landcolor="#150C22",
+        showocean=True, oceancolor="#0B0614",
+        showlakes=False,
+        showcountries=True, countrycolor="#2E1B45",
+        showsubunits=True, subunitcolor="#241436",
+        showcoastlines=True, coastlinecolor="#3A2352",
+        showframe=False,
+    )
+
+
+def city_card(r) -> str:
+    return (
+        f"<b>{r['city']}</b>"
+        f"<br><span style='color:#9A8AB0'>{r['state']}, {r['country']}</span>"
+        f"<br>"
+        f"<br>Revenue &nbsp;<b>${r['revenue']:,.0f}</b>"
+        f"<br>Orders &nbsp;&nbsp;<b>{int(r['orders']):,}</b>"
+        f"<br>Customers &nbsp;<b>{int(r['customers']):,}</b>"
+        "<extra></extra>"
+    )
+
+
+def build_map(market: str, metric: str, level: str) -> go.Figure:
+    fig = go.Figure()
+
+    if level == "Cities":
+        c = CITIES.copy()
+        if market != "All":
+            keep = set(DETAIL.loc[DETAIL["market"] == market, "country"])
+            if len(c) and keep:
+                c = c[c["country"].isin(keep)] if c["country"].isin(keep).any() else c
+        if not len(c):
+            T.style(fig, height=620)
+            fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), geo=_geo(market))
+            return fig
+        mx = float(c["revenue"].max()) or 1.0
+        fig.add_scattergeo(
+            lat=c["lat"], lon=c["lon"], mode="markers",
+            marker=dict(
+                size=4 + (c["revenue"] / mx) ** 0.55 * 26,
+                color=c["revenue"],
+                colorscale=SCALE,
+                opacity=0.85,
+                line=dict(color="#0B0614", width=0.6),
+                colorbar=dict(
+                    title=dict(text="revenue", font=dict(color=T.DIM, size=11)),
+                    tickfont=dict(color=T.DIM, size=10.5), tickformat="~s",
+                    thickness=11, len=0.55, x=0.99, y=0.5,
+                    outlinewidth=0, bgcolor="rgba(0,0,0,0)",
+                ),
+            ),
+            customdata=c.apply(city_card, axis=1),
+            hovertemplate="%{customdata}",
+            showlegend=False,
+        )
+        T.style(fig, height=620)
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=0, b=0),
+            geo=_geo(market),
+            hoverlabel=dict(bgcolor="rgba(21,12,34,.97)", bordercolor=T.M1,
+                            font=dict(color=T.TXT, size=12.5,
+                                      family="Segoe UI, Arial, sans-serif"),
+                            align="left"),
+        )
+        return fig
+
     d = MAPPED if market == "All" else MAPPED[MAPPED["market"] == market]
     d = d.copy()
     if not len(d):
-        return T.style(go.Figure(), height=620)
+        return T.style(fig, height=620)
 
     if metric == "late_rate":
-        z = d["late_rate"] * 100
-        cbar_title = "late %"
-        cbar_fmt = ".0f"
+        z, cbar_title, cbar_fmt = d["late_rate"] * 100, "late %", ".0f"
     elif metric == "margin":
-        z = d["margin"] * 100
-        cbar_title = "margin %"
-        cbar_fmt = ".0f"
+        z, cbar_title, cbar_fmt = d["margin"] * 100, "margin %", ".0f"
     else:
-        z = d["revenue"]
-        cbar_title = "revenue"
-        cbar_fmt = "~s"
-
-    fig = go.Figure()
+        z, cbar_title, cbar_fmt = d["revenue"], "revenue", "~s"
 
     fig.add_choropleth(
-        locations=d["iso3"],
-        z=z,
-        locationmode="ISO-3",
+        locations=d["iso3"], z=z, locationmode="ISO-3",
         colorscale=SCALE,
         marker=dict(line=dict(color="#2E1B45", width=0.6)),
         colorbar=dict(
             title=dict(text=cbar_title, font=dict(color=T.DIM, size=11)),
-            tickfont=dict(color=T.DIM, size=10.5),
-            tickformat=cbar_fmt,
+            tickfont=dict(color=T.DIM, size=10.5), tickformat=cbar_fmt,
             thickness=11, len=0.55, x=0.99, y=0.5,
             outlinewidth=0, bgcolor="rgba(0,0,0,0)",
         ),
-        customdata=d.apply(lambda r: hover_card(r), axis=1),
+        customdata=d.apply(hover_card, axis=1),
         hovertemplate="%{customdata}",
     )
 
@@ -113,15 +188,10 @@ def build_map(market: str, metric: str) -> go.Figure:
     if len(b):
         mx = float(b["revenue"].max()) or 1.0
         fig.add_scattergeo(
-            lat=b["lat"], lon=b["lon"],
-            mode="markers",
-            marker=dict(
-                size=6 + (b["revenue"] / mx) * 34,
-                color=T.MINT,
-                opacity=0.55,
-                line=dict(color="#0B0614", width=1),
-            ),
-            customdata=b.apply(lambda r: hover_card(r), axis=1),
+            lat=b["lat"], lon=b["lon"], mode="markers",
+            marker=dict(size=6 + (b["revenue"] / mx) * 32, color=T.MINT,
+                        opacity=0.5, line=dict(color="#0B0614", width=1)),
+            customdata=b.apply(hover_card, axis=1),
             hovertemplate="%{customdata}",
             showlegend=False,
         )
@@ -129,22 +199,11 @@ def build_map(market: str, metric: str) -> go.Figure:
     T.style(fig, height=620)
     fig.update_layout(
         margin=dict(l=0, r=0, t=0, b=0),
-        geo=dict(
-            projection_type="natural earth",
-            bgcolor="rgba(0,0,0,0)",
-            showland=True, landcolor="#150C22",
-            showocean=True, oceancolor="#0B0614",
-            showlakes=False,
-            showcountries=True, countrycolor="#2E1B45",
-            showcoastlines=True, coastlinecolor="#3A2352",
-            showframe=False,
-        ),
-        hoverlabel=dict(
-            bgcolor="rgba(21,12,34,.97)",
-            bordercolor=T.M1,
-            font=dict(color=T.TXT, size=12.5, family="Segoe UI, Arial, sans-serif"),
-            align="left",
-        ),
+        geo=_geo(market),
+        hoverlabel=dict(bgcolor="rgba(21,12,34,.97)", bordercolor=T.M1,
+                        font=dict(color=T.TXT, size=12.5,
+                                  family="Segoe UI, Arial, sans-serif"),
+                        align="left"),
     )
     return fig
 
@@ -178,6 +237,7 @@ layout = html.Div(
                 html.Div(
                     className="filter-grid",
                     children=[
+                        T.pill_group("level", "LEVEL", LEVELS),
                         T.pill_group("metric", "COLOUR BY", METRICS),
                         T.pill_group("mkt", "MARKET", MARKETS),
                     ],
@@ -196,8 +256,9 @@ layout = html.Div(
         ),
         T.panel(
             "Destination performance",
-            "Fill colour is the selected metric. Bubble size is always revenue, so "
-            "you can see scale and performance at the same time.",
+            "Countries level fills each country by the selected metric. Cities "
+            "level plots the real coordinates stored in customer_address, sized "
+            "by revenue. Picking a market zooms the map to that region.",
             dcc.Graph(id="m-map", config={"displayModeBar": False,
                                           "scrollZoom": False}),
             wide=True,
@@ -232,7 +293,8 @@ layout = html.Div(
     Output("m-table", "children"),
     Input(T.store_id("mkt"), "data"),
     Input(T.store_id("metric"), "data"),
+    Input(T.store_id("level"), "data"),
 )
-def refresh(market, metric_label):
+def refresh(market, metric_label, level):
     metric = METRIC_LABELS.get(metric_label, "revenue")
-    return build_map(market, metric), rank_table(market)
+    return build_map(market, metric, level), rank_table(market)
