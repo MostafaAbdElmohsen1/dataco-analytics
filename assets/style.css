@@ -861,3 +861,71 @@ button.pill.pill-on::before {
 @media (max-width: 1100px) {
   .globe-stage { height: 360px; }
 }
+
+/* ===================================================================
+   home layout - hero, charts and note fill exactly one screen
+
+   The hero is the flexible part: it grows to absorb whatever space is
+   left after the charts and the note, so there is never a gap at the
+   bottom and nothing has to be scrolled to. The panels take the same
+   side padding as the cover so every edge lines up.
+   =================================================================== */
+.home-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 22px;
+}
+
+.content .cover.cover-compact {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 30px 56px 10px;
+  gap: 40px;
+  align-items: center;
+}
+
+.cover-compact .brand        { font-size: clamp(50px, 5.2vw, 92px);
+                               letter-spacing: -3.5px; }
+.cover-compact .brand-sub    { margin-top: 11px;
+                               font-size: clamp(13px, 1.2vw, 19px); }
+.cover-compact .rule         { width: 110px; height: 5px; margin-top: 18px; }
+.cover-compact .brand-meta   { margin-top: 18px; font-size: 13.5px; }
+.cover-compact .kpi-row      { margin-top: 32px; gap: 32px; }
+.cover-compact .kpi-value    { font-size: 35px; }
+.cover-compact .kpi-label    { font-size: 11px; letter-spacing: 2.2px; }
+.cover-compact .findings     { margin-top: 26px; gap: 7px;
+                               font-size: 14.5px; line-height: 1.5; }
+.cover-compact .cover-foot   { margin-top: 24px; padding-top: 15px;
+                               font-size: 11px; letter-spacing: 1.8px; }
+
+/* the globe gets its own generous block and scales with the window */
+.cover-compact .globe-stage  { height: clamp(360px, 48vh, 520px); }
+.cover-compact .globe-hint   { margin-top: -10px; font-size: 10px; }
+
+/* charts row - same side padding as the cover above it */
+.cover-risk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 0 56px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+}
+.cover-risk-grid .panel { margin-bottom: 0; height: 100%; }
+
+.home-note {
+  margin: 14px 56px 0;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1250px) {
+  .cover-risk-grid { grid-template-columns: 1fr; }
+  .cover-compact .globe-stage { height: clamp(260px, 34vh, 380px); }
+}
+
+@media (max-width: 900px) {
+  .content .cover.cover-compact { padding: 24px 22px 6px; }
+  .cover-risk-grid { padding: 0 22px; }
+  .home-note { margin: 14px 22px 0; }
+}

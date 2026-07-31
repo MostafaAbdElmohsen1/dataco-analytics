@@ -28,10 +28,10 @@ server = app.server
 
 NAV = [
     ("/", "Home", "\u25c6"),
+    ("/executive", "Executive", "\u25a6"),
     ("/network", "Network", "\u25cb"),
     ("/map", "World map", "\u2295"),
     ("/trends", "Trends", "\u25b8"),
-    ("/executive", "Executive", "\u25a6"),
     ("/risk", "Orders & risk", "\u26a0"),
     ("/quality", "Data Quality", "\u25c9"),
 ]

@@ -116,6 +116,29 @@ def totals() -> dict:
 
 
 @lru_cache(maxsize=1)
+def late_delivery_rate() -> float:
+    """
+    Share of orders shipped later than promised, measured directly
+    from days_for_shipping_real vs days_for_shipment_scheduled.
+
+    Deliberately not late_delivery_risk_flag: that column is a risk
+    marker assigned ahead of time, not a measured outcome, so it is
+    never used for this figure anywhere in the app.
+    """
+    r = q(
+        """
+        SELECT AVG(CASE WHEN days_for_shipping_real
+                             > days_for_shipment_scheduled
+                        THEN 1.0 ELSE 0.0 END) AS late_rate
+        FROM   orders
+        WHERE  days_for_shipping_real IS NOT NULL
+           AND days_for_shipment_scheduled IS NOT NULL
+        """
+    ).iloc[0]["late_rate"]
+    return float(r or 0.0)
+
+
+@lru_cache(maxsize=1)
 def category_revenue() -> pd.DataFrame:
     """
     Revenue per category, grouped by category_id.
@@ -371,6 +394,13 @@ def filter_options() -> dict:
 
 
 def exec_kpis(year=None, market=None, segment=None) -> dict:
+    """
+    on_time is measured from days_for_shipping_real vs
+    days_for_shipment_scheduled, not from late_delivery_risk_flag,
+    which is a risk marker rather than a measured outcome. This keeps
+    the number consistent with delivery_delay() and mode_promise(),
+    which use the same comparison.
+    """
     r = q(
         f"""
         SELECT SUM(oi.sales)                              AS revenue,
@@ -378,8 +408,9 @@ def exec_kpis(year=None, market=None, segment=None) -> dict:
                COUNT(DISTINCT o.order_id)                 AS orders,
                COUNT(DISTINCT o.customer_id)              AS customers,
                COUNT(*)                                   AS lines,
-               AVG(CASE WHEN ds.late_delivery_risk_flag = 0 THEN 1.0 ELSE 0.0 END)
-                                                          AS on_time
+               AVG(CASE WHEN o.days_for_shipping_real
+                             > o.days_for_shipment_scheduled
+                        THEN 0.0 ELSE 1.0 END)             AS on_time
         {FACT_JOIN}
         {_where(year, market, segment)}
         """
