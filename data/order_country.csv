@@ -1,165 +1,165 @@
-order_country_id,order_country_name
-1,Afganistán
-2,Albania
-3,Alemania
-4,Angola
-5,Arabia Saudí
-6,Argelia
-7,Argentina
-8,Armenia
-9,Australia
-10,Austria
-11,Azerbaiyán
-12,Bangladés
-13,Barbados
-14,Baréin
-15,Belice
-16,Benín
-17,Bielorrusia
-18,Bolivia
-19,Bosnia y Herzegovina
-20,Botsuana
-21,Brasil
-22,Bulgaria
-23,Burkina Faso
-24,Burundi
-25,Bután
-26,Bélgica
-27,Camboya
-28,Camerún
-29,Canada
-30,Chad
-31,Chile
-32,China
-33,Chipre
-34,Colombia
-35,Corea del Sur
-36,Costa Rica
-37,Costa de Marfil
-38,Croacia
-39,Cuba
-40,Dinamarca
-41,Ecuador
-42,Egipto
-43,El Salvador
-44,Emiratos Árabes Unidos
-45,Eritrea
-46,Eslovaquia
-47,Eslovenia
-48,España
-49,Estados Unidos
-50,Estonia
-51,Etiopía
-52,Filipinas
-53,Finlandia
-54,Francia
-55,Gabón
-56,Georgia
-57,Ghana
-58,Grecia
-59,Guadalupe
-60,Guatemala
-61,Guayana Francesa
-62,Guinea
-63,Guinea Ecuatorial
-64,Guinea-Bissau
-65,Guyana
-66,Haití
-67,Honduras
-68,Hong Kong
-69,Hungría
-70,India
-71,Indonesia
-72,Irak
-73,Irlanda
-74,Irán
-75,Israel
-76,Italia
-77,Jamaica
-78,Japón
-79,Jordania
-80,Kazajistán
-81,Kenia
-82,Kirguistán
-83,Kuwait
-84,Laos
-85,Lesoto
-86,Liberia
-87,Libia
-88,Lituania
-89,Luxemburgo
-90,Líbano
-91,Macedonia
-92,Madagascar
-93,Malasia
-94,Mali
-95,Marruecos
-96,Martinica
-97,Mauritania
-98,Moldavia
-99,Mongolia
-100,Montenegro
-101,Mozambique
-102,Myanmar (Birmania)
-103,México
-104,Namibia
-105,Nepal
-106,Nicaragua
-107,Nigeria
-108,Noruega
-109,Nueva Zelanda
-110,Níger
-111,Omán
-112,Pakistán
-113,Panamá
-114,Papúa Nueva Guinea
-115,Paraguay
-116,Países Bajos
-117,Perú
-118,Polonia
-119,Portugal
-120,Qatar
-121,Reino Unido
-122,República Centroafricana
-123,República Checa
-124,República Democrática del Congo
-125,República Dominicana
-126,República de Gambia
-127,República del Congo
-128,Ruanda
-129,Rumania
-130,Rusia
-131,Senegal
-132,Serbia
-133,Sierra Leona
-134,Singapur
-135,Siria
-136,Somalia
-137,Sri Lanka
-138,Suazilandia
-139,SudAfrica
-140,Sudán
-141,Sudán del Sur
-142,Suecia
-143,Suiza
-144,Surinam
-145,Sáhara Occidental
-146,Tailandia
-147,Taiwán
-148,Tanzania
-149,Tayikistán
-150,Togo
-151,Trinidad y Tobago
-152,Turkmenistán
-153,Turquía
-154,Túnez
-155,Ucrania
-156,Uganda
-157,Uruguay
-158,Uzbekistán
-159,Venezuela
-160,Vietnam
-161,Yemen
-162,Yibuti
-163,Zambia
-164,Zimbabue
+order_country_id,order_country_name,order_country_name_es
+1,Afghanistan,Afganistán
+2,Albania,Albania
+3,Germany,Alemania
+4,Angola,Angola
+5,Saudi Arabia,Arabia Saudí
+6,Algeria,Argelia
+7,Argentina,Argentina
+8,Armenia,Armenia
+9,Australia,Australia
+10,Austria,Austria
+11,Azerbaijan,Azerbaiyán
+12,Bangladesh,Bangladés
+13,Barbados,Barbados
+14,Bahrain,Baréin
+15,Belize,Belice
+16,Benin,Benín
+17,Belarus,Bielorrusia
+18,Bolivia,Bolivia
+19,Bosnia and Herzegovina,Bosnia y Herzegovina
+20,Botswana,Botsuana
+21,Brazil,Brasil
+22,Bulgaria,Bulgaria
+23,Burkina Faso,Burkina Faso
+24,Burundi,Burundi
+25,Bhutan,Bután
+26,Belgium,Bélgica
+27,Cambodia,Camboya
+28,Cameroon,Camerún
+29,Canada,Canada
+30,Chad,Chad
+31,Chile,Chile
+32,China,China
+33,Cyprus,Chipre
+34,Colombia,Colombia
+35,South Korea,Corea del Sur
+36,Costa Rica,Costa Rica
+37,Ivory Coast,Costa de Marfil
+38,Croatia,Croacia
+39,Cuba,Cuba
+40,Denmark,Dinamarca
+41,Ecuador,Ecuador
+42,Egypt,Egipto
+43,El Salvador,El Salvador
+44,United Arab Emirates,Emiratos Árabes Unidos
+45,Eritrea,Eritrea
+46,Slovakia,Eslovaquia
+47,Slovenia,Eslovenia
+48,Spain,España
+49,United States,Estados Unidos
+50,Estonia,Estonia
+51,Ethiopia,Etiopía
+52,Philippines,Filipinas
+53,Finland,Finlandia
+54,France,Francia
+55,Gabon,Gabón
+56,Georgia,Georgia
+57,Ghana,Ghana
+58,Greece,Grecia
+59,Guadeloupe,Guadalupe
+60,Guatemala,Guatemala
+61,French Guiana,Guayana Francesa
+62,Guinea,Guinea
+63,Equatorial Guinea,Guinea Ecuatorial
+64,Guinea-Bissau,Guinea-Bissau
+65,Guyana,Guyana
+66,Haiti,Haití
+67,Honduras,Honduras
+68,Hong Kong,Hong Kong
+69,Hungary,Hungría
+70,India,India
+71,Indonesia,Indonesia
+72,Iraq,Irak
+73,Ireland,Irlanda
+74,Iran,Irán
+75,Israel,Israel
+76,Italy,Italia
+77,Jamaica,Jamaica
+78,Japan,Japón
+79,Jordan,Jordania
+80,Kazakhstan,Kazajistán
+81,Kenya,Kenia
+82,Kyrgyzstan,Kirguistán
+83,Kuwait,Kuwait
+84,Laos,Laos
+85,Lesotho,Lesoto
+86,Liberia,Liberia
+87,Libya,Libia
+88,Lithuania,Lituania
+89,Luxembourg,Luxemburgo
+90,Lebanon,Líbano
+91,Macedonia,Macedonia
+92,Madagascar,Madagascar
+93,Malaysia,Malasia
+94,Mali,Mali
+95,Morocco,Marruecos
+96,Martinique,Martinica
+97,Mauritania,Mauritania
+98,Moldova,Moldavia
+99,Mongolia,Mongolia
+100,Montenegro,Montenegro
+101,Mozambique,Mozambique
+102,Myanmar,Myanmar (Birmania)
+103,Mexico,México
+104,Namibia,Namibia
+105,Nepal,Nepal
+106,Nicaragua,Nicaragua
+107,Nigeria,Nigeria
+108,Norway,Noruega
+109,New Zealand,Nueva Zelanda
+110,Niger,Níger
+111,Oman,Omán
+112,Pakistan,Pakistán
+113,Panama,Panamá
+114,Papua New Guinea,Papúa Nueva Guinea
+115,Paraguay,Paraguay
+116,Netherlands,Países Bajos
+117,Peru,Perú
+118,Poland,Polonia
+119,Portugal,Portugal
+120,Qatar,Qatar
+121,United Kingdom,Reino Unido
+122,Central African Republic,República Centroafricana
+123,Czech Republic,República Checa
+124,Democratic Republic of the Congo,República Democrática del Congo
+125,Dominican Republic,República Dominicana
+126,Gambia,República de Gambia
+127,Republic of the Congo,República del Congo
+128,Rwanda,Ruanda
+129,Romania,Rumania
+130,Russia,Rusia
+131,Senegal,Senegal
+132,Serbia,Serbia
+133,Sierra Leone,Sierra Leona
+134,Singapore,Singapur
+135,Syria,Siria
+136,Somalia,Somalia
+137,Sri Lanka,Sri Lanka
+138,Eswatini,Suazilandia
+139,South Africa,SudAfrica
+140,Sudan,Sudán
+141,South Sudan,Sudán del Sur
+142,Sweden,Suecia
+143,Switzerland,Suiza
+144,Suriname,Surinam
+145,Western Sahara,Sáhara Occidental
+146,Thailand,Tailandia
+147,Taiwan,Taiwán
+148,Tanzania,Tanzania
+149,Tajikistan,Tayikistán
+150,Togo,Togo
+151,Trinidad and Tobago,Trinidad y Tobago
+152,Turkmenistan,Turkmenistán
+153,Turkey,Turquía
+154,Tunisia,Túnez
+155,Ukraine,Ucrania
+156,Uganda,Uganda
+157,Uruguay,Uruguay
+158,Uzbekistan,Uzbekistán
+159,Venezuela,Venezuela
+160,Vietnam,Vietnam
+161,Yemen,Yemen
+162,Djibouti,Yibuti
+163,Zambia,Zambia
+164,Zimbabwe,Zimbabue

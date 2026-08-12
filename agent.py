@@ -85,10 +85,12 @@ in <country>", always use vw_DimGeography.order_country_name - NOT
 vw_DimCustomer.country. vw_DimCustomer.country only has two values
 (EE. UU., Puerto Rico) and will give a wrong answer for any other country.
 
-RULE 2 (country names are Spanish): The country/region columns never contain
-Arabic. Translate any country name the user gives (Arabic or English) into the
-exact stored Spanish value before writing WHERE. Example: "مصر" / "Egypt" must
-become 'Egipto' in the query - never '%مصر%'.
+RULE 2 (country names are English): Country names are stored in ENGLISH
+(Egypt, Germany, United States, Mexico...). They never contain Arabic. If the
+user names a country in Arabic, translate it to English before writing WHERE:
+"مصر" -> 'Egypt', "ألمانيا" -> 'Germany'. Never put Arabic inside a WHERE.
+One legacy exception: order_state (province/state) is still in Spanish for some
+countries, so use LIKE there and expect local spellings.
 
 RULE 3 (grain - the most common mistake): Each row of vw_FactOrderItem is ONE
 ORDER LINE, not a customer and not a whole order. One customer appears in many
@@ -157,15 +159,16 @@ customer_id, customer_fname, customer_lname, customer_email,
 customer_segment_name, customer_address_id, street, city, state,
 zipcode, country, latitude, longitude
 customer_email is always XXXXXXXXX (masked in the view) - never present it.
-country holds only two values (EE. UU. = United States, Puerto Rico) and refers
-to the customer's own home address, NOT the shipping destination. Use LIKE.
+country holds only two values (United States, Puerto Rico) and refers to the
+customer's own home address, NOT the shipping destination. Use LIKE.
 If asked about any other country using this column, the honest answer is zero.
 
 4) vw_DimGeography (geography):
 destination_id, order_city, order_state, order_zipcode,
 region_name, market_name, order_country_name
-order_state and order_country_name are in Spanish (e.g. México, Andalucía);
-use LIKE with %. order_zipcode may be NULL for some countries - that is normal.
+order_country_name is in English. order_state is still in local spelling for
+some countries (e.g. Andalucía) - use LIKE with % there.
+order_zipcode may be NULL for some countries - that is normal.
 order_country_name is the ORDER'S SHIPPING DESTINATION (164 countries), not the
 customer's home address. For a general "customers in <country>" question, use
 this column - not vw_DimCustomer.country.
@@ -202,113 +205,6 @@ to a shipping destination you MUST go through vw_FactOrderItem.
 Every join must have vw_FactOrderItem on one side; the dimension views are never
 joined directly to each other.
 
-[COUNTRY NAME TABLE - English = the exact Spanish value stored in
-order_country_name. Write the value AFTER the '=' sign in your WHERE clause.
-IMPORTANT: any country NOT listed below is stored with exactly its English
-spelling (e.g. Angola, Brazil->listed, Chile, China, Kuwait, Nigeria, Vietnam),
-so use the English name as-is for those.
-
-Afghanistan=Afganistán
-Germany=Alemania
-Saudi Arabia=Arabia Saudí
-Algeria=Argelia
-Azerbaijan=Azerbaiyán
-Bangladesh=Bangladés
-Bahrain=Baréin
-Belize=Belice
-Benin=Benín
-Belarus=Bielorrusia
-Bosnia and Herzegovina=Bosnia y Herzegovina
-Botswana=Botsuana
-Brazil=Brasil
-Bhutan=Bután
-Belgium=Bélgica
-Cambodia=Camboya
-Cameroon=Camerún
-Cyprus=Chipre
-South Korea=Corea del Sur
-Ivory Coast=Costa de Marfil
-Croatia=Croacia
-Denmark=Dinamarca
-Egypt=Egipto
-United Arab Emirates=Emiratos Árabes Unidos
-Slovakia=Eslovaquia
-Slovenia=Eslovenia
-Spain=España
-United States=Estados Unidos
-Ethiopia=Etiopía
-Philippines=Filipinas
-Finland=Finlandia
-France=Francia
-Gabon=Gabón
-Greece=Grecia
-Guadeloupe=Guadalupe
-French Guiana=Guayana Francesa
-Equatorial Guinea=Guinea Ecuatorial
-Haiti=Haití
-Hungary=Hungría
-Iraq=Irak
-Ireland=Irlanda
-Iran=Irán
-Italy=Italia
-Japan=Japón
-Jordan=Jordania
-Kazakhstan=Kazajistán
-Kenya=Kenia
-Kyrgyzstan=Kirguistán
-Lesotho=Lesoto
-Libya=Libia
-Lithuania=Lituania
-Luxembourg=Luxemburgo
-Lebanon=Líbano
-Malaysia=Malasia
-Morocco=Marruecos
-Martinique=Martinica
-Moldova=Moldavia
-Myanmar=Myanmar (Birmania)
-Mexico=México
-Norway=Noruega
-New Zealand=Nueva Zelanda
-Niger=Níger
-Oman=Omán
-Pakistan=Pakistán
-Panama=Panamá
-Papua New Guinea=Papúa Nueva Guinea
-Netherlands=Países Bajos
-Peru=Perú
-Poland=Polonia
-United Kingdom=Reino Unido
-Central African Republic=República Centroafricana
-Czech Republic=República Checa
-Democratic Republic of the Congo=República Democrática del Congo
-Dominican Republic=República Dominicana
-Gambia=República de Gambia
-Republic of the Congo=República del Congo
-Rwanda=Ruanda
-Romania=Rumania
-Russia=Rusia
-Sierra Leone=Sierra Leona
-Singapore=Singapur
-Syria=Siria
-Eswatini=Suazilandia
-South Africa=SudAfrica
-Sudan=Sudán
-South Sudan=Sudán del Sur
-Sweden=Suecia
-Switzerland=Suiza
-Suriname=Surinam
-Western Sahara=Sáhara Occidental
-Thailand=Tailandia
-Taiwan=Taiwán
-Tajikistan=Tayikistán
-Trinidad and Tobago=Trinidad y Tobago
-Turkmenistan=Turkmenistán
-Turkey=Turquía
-Tunisia=Túnez
-Ukraine=Ucrania
-Uzbekistan=Uzbekistán
-Djibouti=Yibuti
-Zimbabwe=Zimbabue]
 """
 
 # شكل الأدوات ده هو شكل OpenAI القياسي، و Gemini بيدعمه من خلال

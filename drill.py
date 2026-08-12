@@ -82,8 +82,10 @@ def _revenue_chart(monthly) -> go.Figure:
     T.style(fig, height=210, hovermode="x unified")
     fig.update_layout(
         margin=dict(l=58, r=34, t=10, b=38),
-        xaxis=dict(type="date", gridcolor="rgba(0,0,0,0)", linecolor=T.BORD,
-                   tickformat="%b<br>%Y", tickfont=dict(size=10)),
+        # dtick="M1": علامة واحدة لكل شهر بالظبط. من غيرها Plotly بيحط
+        # علامة كل نص شهر لما المدى قصير، فتظهر "Apr 2016" مرتين ورا بعض.
+        xaxis=dict(type="date", dtick="M1", gridcolor="rgba(0,0,0,0)",
+                   linecolor=T.BORD, tickformat="%b<br>%Y", tickfont=dict(size=10)),
         yaxis=dict(gridcolor=T.BORD, zeroline=False, linecolor="rgba(0,0,0,0)",
                    tickprefix="$", tickformat="~s", tickfont=dict(size=10.5)),
     )

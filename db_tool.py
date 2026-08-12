@@ -116,8 +116,8 @@ def run_sql_query(sql_query: str) -> dict:
                 "status": "no_results",
                 "message": (
                     "Query ran successfully but matched 0 rows. The filter value is "
-                    "probably spelled differently in the database (country names are "
-                    "stored in Spanish, and some values contain stray spaces). "
+                    "probably spelled differently in the database (some values "
+                    "contain stray spaces, and order_state uses local spellings). "
                     "Do NOT tell the user the answer is zero yet. First run "
                     "SELECT DISTINCT <column> FROM <view> WHERE <column> LIKE '%<part>%' "
                     "to find the exact stored value, then retry the original query."
