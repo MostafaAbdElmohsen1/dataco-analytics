@@ -367,7 +367,7 @@ def _esc(v: str) -> str:
     return str(v).replace("'", "''")
 
 
-def _where(year=None, market=None, segment=None) -> str:
+def _where(year=None, market=None, segment=None, country=None) -> str:
     parts = ["o.order_date IS NOT NULL"]
     if year and year != "All":
         parts.append(f"substr(o.order_date, 1, 4) = '{_esc(year)}'")
@@ -375,7 +375,177 @@ def _where(year=None, market=None, segment=None) -> str:
         parts.append(f"m.market_name = '{_esc(market)}'")
     if segment and segment != "All":
         parts.append(f"cs.customer_segment_name = '{_esc(segment)}'")
+    if country and country != "All":
+        parts.append(f"oc.order_country_name = '{_esc(country)}'")
     return "WHERE " + " AND ".join(parts)
+
+
+# ---------------------------------------------------------------------
+# Drill-down
+#
+# One scope = (level, value), where level is "country" or "market".
+# Every drill query below reuses FACT_JOIN and _where(), so a drilled
+# figure is computed exactly the same way as the page-level figure it
+# came from. The panel can never disagree with the chart above it.
+# ---------------------------------------------------------------------
+def _drill_join(*, country=False, market=False, segment=False,
+                product=False, delivery=False) -> str:
+    """
+    بيبني الـ JOIN على الجداول المطلوبة فقط.
+
+    FACT_JOIN بيوصّل 12 جدول مع بعض، وده كان بيخلي كويري بسيط زي
+    "إيراد أمريكا شهرياً" ياخد 12 ثانية (مصر 0.8 ثانية لأنها أصغر).
+    اللوحة بتشغّل 5 كويريات، فكانت بتاخد 38 ثانية كاملة - مستحيلة
+    للاستخدام، وأبطأ كمان على سيرفر الاستضافة المجاني.
+    الجداول اللي مش مستخدمة في السؤال مالهاش لازمة في الـ JOIN.
+    """
+    parts = [
+        "FROM order_item oi",
+        "JOIN orders o ON o.order_id = oi.order_id",
+    ]
+    if country or market:
+        parts.append(
+            "JOIN shipping_destination sd ON sd.destination_id = o.destination_id")
+    if country:
+        parts.append(
+            "JOIN order_country oc ON oc.order_country_id = sd.order_country_id")
+    if market:
+        parts.append("JOIN region r ON r.region_id = sd.region_id")
+        parts.append("JOIN market m ON m.market_id = r.market_id")
+    if segment:
+        parts.append("JOIN customer cu ON cu.customer_id = o.customer_id")
+        parts.append("JOIN customer_segment cs "
+                     "ON cs.customer_segment_id = cu.customer_segment_id")
+    if product:
+        parts.append("JOIN product p ON p.product_id = oi.product_id")
+    if delivery:
+        parts.append(
+            "JOIN delivery_status ds ON ds.delivery_status_id = o.delivery_status_id")
+    return "\n".join(parts)
+
+
+def _scope_sql(level: str, value: str, year=None, segment=None,
+               product=False, delivery=False) -> tuple[str, str]:
+    """بيرجع (الـ JOIN، الـ WHERE) المناسبين للنطاق المطلوب."""
+    seg_on = bool(segment and segment != "All")
+    is_market = level == "market"
+    join = _drill_join(
+        country=not is_market, market=is_market,
+        segment=seg_on, product=product, delivery=delivery,
+    )
+    where = (_where(year, value, segment, None) if is_market
+             else _where(year, None, segment, value))
+    return join, where
+
+
+def _scope_where(level: str, value: str, year=None, segment=None) -> str:
+    """متسيبة للتوافق مع أي استدعاء قديم."""
+    return _scope_sql(level, value, year, segment)[1]
+
+
+def drill_kpis(level: str, value: str, year=None, segment=None) -> dict:
+    join, where = _scope_sql(level, value, year, segment)
+    r = q(
+        f"""
+        SELECT SUM(oi.sales)                  AS revenue,
+               SUM(oi.profit_amount)          AS profit,
+               COUNT(DISTINCT o.order_id)     AS orders,
+               COUNT(DISTINCT o.customer_id)  AS customers,
+               SUM(oi.order_item_quantity)    AS units,
+               AVG(CASE WHEN o.days_for_shipping_real
+                             > o.days_for_shipment_scheduled
+                        THEN 1.0 ELSE 0.0 END) AS late_rate,
+               AVG(o.days_for_shipping_real)   AS avg_days
+        {join}
+        {where}
+        """
+    ).iloc[0]
+
+    revenue = float(r["revenue"] or 0)
+    profit = float(r["profit"] or 0)
+    orders = int(r["orders"] or 0)
+    return {
+        "revenue": revenue,
+        "profit": profit,
+        "margin": profit / revenue if revenue else 0.0,
+        "orders": orders,
+        "customers": int(r["customers"] or 0),
+        "units": int(r["units"] or 0),
+        "aov": revenue / orders if orders else 0.0,
+        "late_rate": float(r["late_rate"] or 0),
+        "avg_days": float(r["avg_days"] or 0),
+    }
+
+
+def drill_monthly(level: str, value: str, year=None, segment=None):
+    join, where = _scope_sql(level, value, year, segment)
+    return q(
+        f"""
+        SELECT substr(o.order_date, 1, 7) AS month,
+               SUM(oi.sales)              AS revenue,
+               SUM(oi.profit_amount)      AS profit
+        {join}
+        {where}
+        GROUP BY month ORDER BY month
+        """
+    )
+
+
+def drill_products(level: str, value: str, year=None, segment=None, limit: int = 8):
+    join, where = _scope_sql(level, value, year, segment, product=True)
+    return q(
+        f"""
+        SELECT p.product_name        AS product,
+               SUM(oi.sales)         AS revenue,
+               SUM(oi.profit_amount) AS profit
+        {join}
+        {where}
+        GROUP BY p.product_id, p.product_name
+        ORDER BY revenue DESC
+        LIMIT {int(limit)}
+        """
+    )
+
+
+def drill_delivery(level: str, value: str, year=None, segment=None):
+    """Order counts per delivery status - the panel's status breakdown."""
+    join, where = _scope_sql(level, value, year, segment, delivery=True)
+    return q(
+        f"""
+        SELECT ds.delivery_status_name     AS status,
+               COUNT(DISTINCT o.order_id)  AS orders
+        {join}
+        {where}
+        GROUP BY ds.delivery_status_id, ds.delivery_status_name
+        ORDER BY orders DESC
+        """
+    )
+
+
+def drill_rank(level: str, value: str, year=None, segment=None) -> dict:
+    """
+    Where this country/market sits among its peers by revenue, so the
+    panel can say "3rd of 164" instead of showing a bare number with no
+    frame of reference.
+    """
+    is_market = level == "market"
+    col = "m.market_name" if is_market else "oc.order_country_name"
+    join = _drill_join(country=not is_market, market=is_market,
+                       segment=bool(segment and segment != "All"))
+    df = q(
+        f"""
+        SELECT {col} AS name, SUM(oi.sales) AS revenue
+        {join}
+        {_where(year, None, segment, None)}
+        GROUP BY {col}
+        ORDER BY revenue DESC
+        """
+    )
+    total = float(df["revenue"].sum()) or 1.0
+    names = df["name"].tolist()
+    rank = names.index(value) + 1 if value in names else 0
+    share = float(df.loc[df["name"] == value, "revenue"].sum()) / total
+    return {"rank": rank, "of": len(names), "share": share}
 
 
 @lru_cache(maxsize=1)

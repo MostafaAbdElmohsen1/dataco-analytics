@@ -10,6 +10,7 @@ from dash import dcc, html, callback, Input, Output
 import plotly.graph_objects as go
 
 import db
+import drill
 import theme as T
 
 dash.register_page(__name__, path="/executive", name="Executive")
@@ -29,6 +30,7 @@ T.register_pill_group("segment", SEGMENTS)
 layout = html.Div(
     className="page",
     children=[
+        dcc.Store(id="drill-scope", data=None),
         T.page_head(
             "Executive overview",
             "Revenue, margin and delivery performance across the DataCo network. "
@@ -85,8 +87,10 @@ layout = html.Div(
                 ),
                 T.panel(
                     "Top countries by revenue",
-                    "Highest twelve destination countries.",
-                    dcc.Graph(id="g-country", config={"displayModeBar": False}),
+                    "Highest twelve destination countries. "
+                    "Click any bar to open its full breakdown below.",
+                    dcc.Graph(id="g-country", config={"displayModeBar": False},
+                              className="clickable-chart"),
                 ),
                 T.panel(
                     "Top ten products",
@@ -96,8 +100,50 @@ layout = html.Div(
                 ),
             ],
         ),
+        # لوحة التفاصيل بتتبني هنا لما المستخدم يدوس على دولة أو سوق.
+        # فاضية تماماً لحد ما يدوس - عشان الصفحة تفضل خفيفة عند التحميل.
+        html.Div(id="drill-slot"),
     ],
 )
+
+
+# ---------------------------------------------------------------------
+# Drill-down: فتح وقفل لوحة التفاصيل
+#
+# الشارت بيبعت clickData فيه اسم الدولة اللي اتداس عليها، وبنخزنه في
+# Store عشان اللوحة تتبني تاني لوحدها لو المستخدم غيّر الفلاتر وهي
+# مفتوحة (يعني اللوحة بتفضل متسقة مع الفلاتر، مش صورة قديمة).
+# ---------------------------------------------------------------------
+@callback(
+    Output("drill-scope", "data"),
+    Input("g-country", "clickData"),
+    Input({"type": "drill-close", "index": dash.ALL}, "n_clicks"),
+    prevent_initial_call=True,
+)
+def set_drill_scope(click_data, _close_clicks):
+    trig = dash.ctx.triggered_id
+    if isinstance(trig, dict) and trig.get("type") == "drill-close":
+        return None
+    if not click_data or not click_data.get("points"):
+        return dash.no_update
+    return {"level": "country", "value": click_data["points"][0]["y"]}
+
+
+@callback(
+    Output("drill-slot", "children"),
+    Input("drill-scope", "data"),
+    Input(T.store_id("year"), "data"),
+    Input(T.store_id("segment"), "data"),
+)
+def render_drill(scope, year, segment):
+    if not scope:
+        return None
+    try:
+        return drill.panel(scope["level"], scope["value"], year, segment)
+    except Exception as e:  # noqa: BLE001
+        print(f"[executive] drill failed: {e!r}")
+        return html.Div("Couldn't load the details for that selection.",
+                        className="empty")
 
 
 # ---------------------------------------------------------------------

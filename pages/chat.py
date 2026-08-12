@@ -19,6 +19,7 @@ pages/chat.py - Ask the Data.
 from __future__ import annotations
 
 import traceback
+from urllib.parse import parse_qs
 
 import dash
 from dash import dcc, html, Input, Output, State, callback
@@ -83,6 +84,9 @@ layout = html.Div(
             "database and answers with actual numbers - not a guess.",
         ),
         dcc.Store(id="chat-history", data=[]),  # [{"role":..,"content":..}, ...]
+        # بيقرا ?q=... من الرابط - ده اللي بيخلي زرار "Ask the Data about X"
+        # في لوحة التفاصيل يوصل هنا والسؤال مكتوب جاهز في الخانة.
+        dcc.Location(id="chat-url", refresh=False),
         html.Div(
             className="panel panel-wide chat-panel",
             children=[
@@ -127,6 +131,25 @@ layout = html.Div(
         ),
     ],
 )
+
+
+@callback(
+    Output("chat-input", "value", allow_duplicate=True),
+    Input("chat-url", "search"),
+    prevent_initial_call="initial_duplicate",
+)
+def prefill_from_url(search):
+    """
+    بتملى خانة السؤال من الرابط (?q=...) من غير ما تبعته تلقائياً -
+    المستخدم يقرا السؤال ويعدّله لو حب وبعدين يضغط Send. متعمد إننا
+    مانبعتش لوحده: كل سؤال بيستهلك من الحصة، فمش لطيف نصرفها من غير
+    ما المستخدم يقرر.
+    """
+    if not search:
+        return dash.no_update
+    params = parse_qs(search.lstrip("?"))
+    question = (params.get("q") or [""])[0].strip()
+    return question or dash.no_update
 
 
 @callback(
