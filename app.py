@@ -34,6 +34,7 @@ NAV = [
     ("/trends", "Trends", "\u25b8"),
     ("/risk", "Orders & risk", "\u26a0"),
     ("/quality", "Data Quality", "\u25c9"),
+    ("/chat", "Ask the data", "\u25c7"),
 ]
 
 

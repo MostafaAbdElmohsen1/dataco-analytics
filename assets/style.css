@@ -929,3 +929,163 @@ button.pill.pill-on::before {
   .cover-risk-grid { padding: 0 22px; }
   .home-note { margin: 14px 22px 0; }
 }
+
+/* ===================================================================
+   chat page
+   =================================================================== */
+.chat-panel { display: flex; flex-direction: column; gap: 16px; }
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 140px;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.chat-empty {
+  color: var(--dim);
+  font-size: 14px;
+  padding: 18px 0 4px;
+}
+
+.chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.chat-suggest-btn {
+  background: rgba(255,0,128,.08);
+  border: 1px solid var(--bord);
+  color: var(--txt);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.chat-suggest-btn:hover { background: rgba(255,0,128,.16); border-color: var(--m1); }
+
+.chat-bubble {
+  max-width: 78%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  animation: rise .35s cubic-bezier(.2,.7,.2,1) both;
+}
+.chat-bubble-role {
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.chat-bubble-text {
+  font-size: 14.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  /* المحادثة ثنائية اللغة (عربي/إنجليزي) - unicode-bidi: plain-text
+     بيخلي كل رسالة تتعرض باتجاهها الطبيعي حسب محتواها هي، من غير ما
+     نفرض rtl أو ltr على الصفحة كلها. */
+  unicode-bidi: plain-text;
+}
+
+.sql-disclosure { margin-top: 10px; }
+.sql-toggle {
+  cursor: pointer;
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  color: var(--dim);
+  list-style: none;
+  user-select: none;
+  display: inline-block;
+}
+.sql-toggle::-webkit-details-marker { display: none; }
+.sql-toggle:hover { color: var(--m1); }
+.sql-toggle::before { content: "▸ "; }
+details[open] > .sql-toggle::before { content: "▾ "; }
+
+.sql-block {
+  margin-top: 8px;
+  background: var(--bg);
+  border: 1px solid var(--bord);
+  border-radius: 8px;
+  padding: 10px 12px;
+  direction: ltr;
+}
+.sql-block pre {
+  margin: 0;
+  padding: 4px 0;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+  color: var(--mint);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sql-block pre + pre { border-top: 1px solid var(--bord); margin-top: 6px; padding-top: 10px; }
+
+.chat-bubble-user {
+  align-self: flex-end;
+  background: rgba(177,74,237,.14);
+  border: 1px solid rgba(177,74,237,.3);
+}
+.chat-bubble-bot {
+  align-self: flex-start;
+  background: rgba(255,0,128,.07);
+  border: 1px solid var(--bord);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--bord);
+  padding-top: 16px;
+}
+
+/* مهم: Dash 4 مابيحطش الكلاس بتاعنا على الـ <input> نفسه - بيلفه جوه
+   <div class="dash-input-container ..."> والكلاس بيروح على الـ div ده،
+   والـ <input> الحقيقي جواه بياخد كلاس .dash-input-element ومعاه
+   height:100% من Dash. النتيجة كانت إن ارتفاع خانة الكتابة يقع لـ 8px
+   والكلام المكتوب يتقص فمايبانش خالص. الحل: الـ div الخارجي يبقى هو
+   الصندوق اللي بيتشاف، والـ input اللي جواه نصفّر ستايلاته. */
+.chat-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  background: var(--surf);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  transition: border-color .15s ease;
+}
+.chat-input:focus-within { border-color: var(--m1); }
+
+.chat-input .dash-input-element {
+  width: 100%;
+  height: auto;          /* بيلغي height:100% بتاعة Dash اللي كانت بتقصّ النص */
+  padding: 13px 16px;
+  background: transparent;
+  border: none;
+  color: var(--txt);
+  font-size: 14.5px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.chat-input .dash-input-element:focus { outline: none; }
+.chat-input .dash-input-element::placeholder { color: var(--dim); }
+
+.chat-send-btn {
+  background: var(--m1);
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.chat-send-btn:hover { opacity: .88; }

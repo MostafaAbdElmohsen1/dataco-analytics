@@ -36,6 +36,68 @@ INDEXES = [
     ("region", "market_id"),
 ]
 
+# ---------------------------------------------------------------------
+# Agent-facing views (dbo.vw_* equivalents from the SQL Server design).
+#
+# These are the ONLY objects the NL-to-SQL agent (agent.py / db_tool.py)
+# is allowed to touch. Row counts were verified 1:1 against the base
+# tables when these were designed (no rows lost in any join, INNER JOIN
+# does not drop any product/category/department).
+#
+# customer_email is masked to a fixed placeholder *in the view itself*,
+# not just by prompting the model - so a real email can never leak
+# through this path regardless of what the model writes.
+# ---------------------------------------------------------------------
+AGENT_VIEWS = {
+    "vw_FactOrderItem": """
+        SELECT oi.order_item_id, oi.order_id, oi.product_id, o.customer_id,
+               o.destination_id, o.shipping_mode_id, o.order_status_id,
+               o.delivery_status_id, o.order_type_id, o.order_date, o.shipping_date,
+               oi.order_item_quantity, oi.unit_price_at_sale, oi.discount_amount,
+               oi.discount_rate, oi.sales, oi.item_total, oi.profit_ratio,
+               oi.profit_amount, o.days_for_shipping_real, o.days_for_shipment_scheduled
+        FROM   order_item oi
+        JOIN   orders o ON o.order_id = oi.order_id
+    """,
+    "vw_DimCustomer": """
+        SELECT cu.customer_id, cu.customer_fname, cu.customer_lname,
+               'XXXXXXXXX' AS customer_email,
+               cs.customer_segment_name, cu.customer_address_id,
+               ca.street, ca.city, ca.state, ca.zipcode, ca.country,
+               ca.latitude, ca.longitude
+        FROM   customer cu
+        JOIN   customer_segment cs ON cs.customer_segment_id = cu.customer_segment_id
+        JOIN   customer_address ca ON ca.customer_address_id = cu.customer_address_id
+    """,
+    "vw_DimProduct": """
+        SELECT p.product_id, p.product_name, p.product_price, p.product_status,
+               c.category_id, c.category_name, d.department_id, d.department_name
+        FROM   product p
+        JOIN   category c ON c.category_id = p.category_id
+        JOIN   department d ON d.department_id = c.department_id
+    """,
+    "vw_DimGeography": """
+        SELECT sd.destination_id, sd.order_city, sd.order_state, sd.order_zipcode,
+               r.region_name, m.market_name, oc.order_country_name
+        FROM   shipping_destination sd
+        JOIN   region r ON r.region_id = sd.region_id
+        JOIN   market m ON m.market_id = r.market_id
+        JOIN   order_country oc ON oc.order_country_id = sd.order_country_id
+    """,
+    "vw_DimShippingMode": """
+        SELECT shipping_mode_id, shipping_mode_name FROM shipping_mode
+    """,
+    "vw_DimOrderStatus": """
+        SELECT (os.order_status_id * 100) + ds.delivery_status_id AS OrderStatusKey,
+               os.order_status_name, ds.delivery_status_name
+        FROM   order_status os
+        CROSS JOIN delivery_status ds
+    """,
+    "vw_DimOrderType": """
+        SELECT order_type_id, order_type_name FROM order_type
+    """,
+}
+
 
 def normalise_dates(df: pd.DataFrame, table: str) -> pd.DataFrame:
     for col in df.columns:
@@ -98,6 +160,14 @@ def main() -> None:
         cur.execute(
             f'CREATE INDEX IF NOT EXISTS ix_{table}_{column} ON "{table}"("{column}")'
         )
+    conn.commit()
+
+    print("\n[i] Creating agent views")
+    for name, sql in AGENT_VIEWS.items():
+        cur.execute(f'DROP VIEW IF EXISTS "{name}"')
+        cur.execute(f'CREATE VIEW "{name}" AS {sql}')
+        n = cur.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+        print(f"    {name:<24} {n:>8,} rows")
     conn.commit()
 
     try:
