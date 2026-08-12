@@ -33,7 +33,7 @@ layout = html.Div(
         dcc.Store(id="drill-scope", data=None),
         T.page_head(
             "Executive overview",
-            "Revenue, margin and delivery performance across the DataCo network. "
+            "Revenue, margin and delivery performance across the Meridian network. "
             "Every figure below responds to the filters.",
         ),
         html.Div(

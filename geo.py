@@ -1,7 +1,7 @@
 """
 geo.py - country centroid lookup.
 
-DataCo stores destination countries in Spanish. This maps the names that
+The source data stores destination countries in Spanish. This maps the names that
 appear in the data to approximate centroids so the globe can place a
 marker per country. Countries not listed are skipped rather than guessed.
 """

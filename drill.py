@@ -41,14 +41,20 @@ STATUS_COLOUR = {
 }
 
 
-def _tile(value: str, label: str, colour: str = T.TXT):
-    return html.Div(
-        className="drill-tile",
-        children=[
-            html.Div(value, className="drill-tile-value", style={"color": colour}),
-            html.Div(label, className="drill-tile-label"),
-        ],
-    )
+# مربع الرقم بقى في theme.py عشان صفحة الأسواق تستخدمه هي كمان
+_tile = T.kpi_tile
+
+
+def _month_dtick(n_months: int) -> str:
+    """
+    كثافة علامات المحور حسب طول المدة. علامة لكل شهر تمام لمدة قصيرة،
+    لكن على 33 شهر بتبقى 33 تسمية متلزقة في بعض ومش مقروءة.
+    """
+    if n_months <= 14:
+        return "M1"
+    if n_months <= 40:
+        return "M3"
+    return "M6"
 
 
 def _revenue_chart(monthly) -> go.Figure:
@@ -62,12 +68,14 @@ def _revenue_chart(monthly) -> go.Figure:
     المسافة الحقيقية بتبان والخط بيتقطع فين ما مفيش بيانات.
     """
     fig = go.Figure()
+    dtick = "M1"
     if len(monthly):
         d = monthly.copy()
         d["date"] = pd.to_datetime(d["month"] + "-01")
         # نمدّد المدى لكل الشهور بين أول وآخر شهر، والناقص يفضل NaN
         full = pd.date_range(d["date"].min(), d["date"].max(), freq="MS")
         d = d.set_index("date").reindex(full)
+        dtick = _month_dtick(len(d))
 
         fig.add_scatter(
             x=d.index, y=d["revenue"],
@@ -84,7 +92,7 @@ def _revenue_chart(monthly) -> go.Figure:
         margin=dict(l=58, r=34, t=10, b=38),
         # dtick="M1": علامة واحدة لكل شهر بالظبط. من غيرها Plotly بيحط
         # علامة كل نص شهر لما المدى قصير، فتظهر "Apr 2016" مرتين ورا بعض.
-        xaxis=dict(type="date", dtick="M1", gridcolor="rgba(0,0,0,0)",
+        xaxis=dict(type="date", dtick=dtick, gridcolor="rgba(0,0,0,0)",
                    linecolor=T.BORD, tickformat="%b<br>%Y", tickfont=dict(size=10)),
         yaxis=dict(gridcolor=T.BORD, zeroline=False, linecolor="rgba(0,0,0,0)",
                    tickprefix="$", tickformat="~s", tickfont=dict(size=10.5)),

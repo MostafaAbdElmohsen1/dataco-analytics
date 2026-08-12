@@ -982,3 +982,209 @@ def city_points() -> pd.DataFrame:
         ORDER  BY revenue DESC
         """
     )
+
+
+# ---------------------------------------------------------------------
+# Market (continent) explorer  -  pages/markets.py
+#
+# The market page shows one market at a time in full detail. Every
+# function here takes the market name and the same year/segment filters
+# the rest of the app uses, so a number on the market page can never
+# disagree with the same number on the executive page.
+# ---------------------------------------------------------------------
+LATE_CASE = ("AVG(CASE WHEN o.days_for_shipping_real "
+             "> o.days_for_shipment_scheduled THEN 1.0 ELSE 0.0 END)")
+
+
+def market_summary(year=None, segment=None) -> pd.DataFrame:
+    """Revenue + share per market - drives the selector cards at the top."""
+    seg = bool(segment and segment != "All")
+    df = q(
+        f"""
+        SELECT m.market_name              AS market,
+               SUM(oi.sales)              AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               {LATE_CASE}                AS late_rate
+        {_drill_join(market=True, segment=seg)}
+        {_where(year, None, segment, None)}
+        GROUP BY m.market_id, m.market_name
+        ORDER BY revenue DESC
+        """
+    )
+    total = float(df["revenue"].sum()) or 1.0
+    df["share"] = df["revenue"] / total
+    return df
+
+
+def market_countries(market: str, year=None, segment=None) -> pd.DataFrame:
+    seg = bool(segment and segment != "All")
+    return q(
+        f"""
+        SELECT oc.order_country_name      AS country,
+               SUM(oi.sales)              AS revenue,
+               SUM(oi.profit_amount)      AS profit,
+               COUNT(DISTINCT o.order_id) AS orders,
+               COUNT(DISTINCT o.customer_id) AS customers,
+               {LATE_CASE}                AS late_rate
+        {_drill_join(country=True, market=True, segment=seg)}
+        {_where(year, market, segment, None)}
+        GROUP BY oc.order_country_id, oc.order_country_name
+        ORDER BY revenue DESC
+        """
+    )
+
+
+def market_regions(market: str, year=None, segment=None) -> pd.DataFrame:
+    seg = bool(segment and segment != "All")
+    return q(
+        f"""
+        SELECT r.region_name              AS region,
+               SUM(oi.sales)              AS revenue,
+               COUNT(DISTINCT o.order_id) AS orders,
+               {LATE_CASE}                AS late_rate
+        {_drill_join(market=True, segment=seg)}
+        {_where(year, market, segment, None)}
+        GROUP BY r.region_id, r.region_name
+        ORDER BY revenue DESC
+        """
+    )
+
+
+def market_shipping(market: str, year=None, segment=None) -> pd.DataFrame:
+    """Average promised vs actual shipping days per shipping mode."""
+    seg = bool(segment and segment != "All")
+    join = _drill_join(market=True, segment=seg) + \
+        "\nJOIN shipping_mode sm ON sm.shipping_mode_id = o.shipping_mode_id"
+    return q(
+        f"""
+        SELECT sm.shipping_mode_name            AS mode,
+               AVG(o.days_for_shipment_scheduled) AS promised,
+               AVG(o.days_for_shipping_real)      AS actual,
+               COUNT(DISTINCT o.order_id)         AS orders
+        {join}
+        {_where(year, market, segment, None)}
+        GROUP BY sm.shipping_mode_id, sm.shipping_mode_name
+        ORDER BY orders DESC
+        """
+    )
+
+
+# ---------------------------------------------------------------------
+# Customers page
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def customer_kpis() -> dict:
+    r = q(
+        """
+        SELECT COUNT(*) AS customers, AVG(n) AS avg_orders,
+               AVG(CASE WHEN n > 1 THEN 1.0 ELSE 0.0 END) AS repeat_rate
+        FROM  (SELECT customer_id, COUNT(DISTINCT order_id) AS n
+               FROM orders GROUP BY customer_id)
+        """
+    ).iloc[0]
+    return {
+        "customers": int(r["customers"]),
+        "avg_orders": float(r["avg_orders"]),
+        "repeat_rate": float(r["repeat_rate"]),
+    }
+
+
+@lru_cache(maxsize=1)
+def new_customers_by_month() -> pd.DataFrame:
+    """
+    عدد العملاء اللي عملوا أول طلب ليهم في كل شهر.
+
+    تحذير مهم عن الداتا: من أكتوبر 2017 لآخر الفترة، كل طلب في الداتا
+    جاي من عميل جديد بيشتري مرة واحدة وبس (عدد الطلبات = عدد العملاء
+    النشطين = عدد العملاء الجدد بالظبط). وأرقام العملاء في الفترة دي
+    كتلة متتالية. ده مش سلوك تجاري حقيقي - ده أثر في تجميع البيانات
+    نفسها. الصفحة بتعلّم على الفترة دي بوضوح بدل ما تعرضها كنمو.
+    """
+    return q(
+        """
+        SELECT first_month AS month, COUNT(*) AS new_customers
+        FROM  (SELECT customer_id, substr(MIN(order_date), 1, 7) AS first_month
+               FROM orders WHERE order_date IS NOT NULL
+               GROUP BY customer_id)
+        GROUP BY first_month ORDER BY first_month
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def orders_per_customer() -> pd.DataFrame:
+    return q(
+        """
+        SELECT n AS orders, COUNT(*) AS customers
+        FROM  (SELECT customer_id, COUNT(DISTINCT order_id) AS n
+               FROM orders GROUP BY customer_id)
+        GROUP BY n ORDER BY n
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def segment_summary() -> pd.DataFrame:
+    return q(
+        """
+        SELECT cs.customer_segment_name        AS segment,
+               COUNT(DISTINCT cu.customer_id)  AS customers,
+               COUNT(DISTINCT o.order_id)      AS orders,
+               SUM(oi.sales)                   AS revenue,
+               SUM(oi.profit_amount)           AS profit
+        FROM   order_item oi
+        JOIN   orders o           ON o.order_id = oi.order_id
+        JOIN   customer cu        ON cu.customer_id = o.customer_id
+        JOIN   customer_segment cs ON cs.customer_segment_id = cu.customer_segment_id
+        GROUP  BY cs.customer_segment_id, cs.customer_segment_name
+        ORDER  BY revenue DESC
+        """
+    )
+
+
+# ---------------------------------------------------------------------
+# Products page
+# ---------------------------------------------------------------------
+@lru_cache(maxsize=1)
+def product_leaders(limit: int = 10) -> pd.DataFrame:
+    return q(
+        f"""
+        SELECT p.product_name        AS product,
+               SUM(oi.sales)         AS revenue,
+               SUM(oi.profit_amount) AS profit,
+               SUM(oi.profit_amount) / SUM(oi.sales) AS margin,
+               SUM(oi.order_item_quantity) AS units
+        FROM   order_item oi
+        JOIN   product p ON p.product_id = oi.product_id
+        GROUP  BY p.product_id, p.product_name
+        ORDER  BY revenue DESC
+        LIMIT  {int(limit)}
+        """
+    )
+
+
+@lru_cache(maxsize=1)
+def category_margin(min_revenue: float = 50000) -> pd.DataFrame:
+    """
+    الهامش لكل فئة. ده الشارت اللي بيجاوب على "نركز على إيه": الهامش
+    بيتراوح من 0.6% لـ 13.6% بين الفئات، بينما على مستوى المنتج الواحد
+    الهامش شبه ثابت. يعني المشكلة في مزيج الفئات مش في منتج معين.
+    """
+    return q(
+        f"""
+        SELECT c.category_id        AS category_id,
+               c.category_name      AS category,
+               d.department_name    AS department,
+               SUM(oi.sales)        AS revenue,
+               SUM(oi.profit_amount) AS profit,
+               SUM(oi.profit_amount) / SUM(oi.sales) AS margin
+        FROM   order_item oi
+        JOIN   product p    ON p.product_id  = oi.product_id
+        JOIN   category c   ON c.category_id = p.category_id
+        JOIN   department d ON d.department_id = c.department_id
+        GROUP  BY c.category_id, c.category_name, d.department_name
+        HAVING SUM(oi.sales) >= {float(min_revenue)}
+        ORDER  BY margin ASC
+        """
+    )

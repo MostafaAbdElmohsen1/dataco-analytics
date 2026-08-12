@@ -1,4 +1,4 @@
-/* assets/style.css  -  DataCo cover
+/* assets/style.css  -  Meridian Retail Group
    Dash loads every file in ./assets automatically. */
 
 :root {
@@ -34,7 +34,8 @@ html, body {
 /* ---------- background grid ---------- */
 .grid-overlay {
   position: fixed;
-  inset: 0;
+  /* أكبر من الشاشة عشان لما تتحرك مايبانش الحرف الفاضي */
+  inset: -200px;
   pointer-events: none;
   background-image:
     linear-gradient(to right, var(--bord) 1px, transparent 1px),
@@ -42,6 +43,19 @@ html, body {
   background-size: 240px 188px;
   opacity: 0.45;
   z-index: 0;
+  /* الشبكة بتزحف ببطء - ده اللي بيدي إحساس إن الصفحة "حية".
+     المسافة المقطوعة = حجم مربع واحد بالظبط، فاللحظة اللي بتبدأ
+     فيها من الأول مش بتتلاحظ.
+     بنحرك transform مش background-position: الأولانية بتتنفذ على
+     كارت الشاشة، والتانية بتجبر المتصفح يعيد رسم الشاشة كلها كل
+     إطار - وده كان بياكل من الأداء بلا داعي. */
+  will-change: transform;
+  animation: gridDrift 90s linear infinite;
+}
+
+@keyframes gridDrift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(240px, 188px, 0); }
 }
 
 .cover {
@@ -272,9 +286,13 @@ html, body {
   gap: 34px;
 }
 
-.side-brand-name { font-size: 26px; font-weight: 700; letter-spacing: -1px; }
-.side-brand-sub  { margin-top: 3px; color: var(--m1); font-size: 10.5px;
-                   letter-spacing: 5px; font-weight: 600; }
+/* شعار Meridian: الأيقونة جنب الاسم، والاسم فوق السطر التاني */
+.side-brand { display: flex; align-items: center; gap: 12px; }
+.side-logo  { width: 38px; height: 38px; flex: 0 0 auto; }
+.side-brand-name { font-size: 21px; font-weight: 700; letter-spacing: .6px;
+                   line-height: 1; }
+.side-brand-sub  { margin-top: 5px; color: var(--dim); font-size: 8.5px;
+                   letter-spacing: 3.4px; font-weight: 500; }
 
 .nav { display: grid; gap: 4px; }
 
@@ -1209,4 +1227,256 @@ details[open] > .sql-toggle::before { content: "▾ "; }
 }
 @media (max-width: 640px) {
   .drill-tiles { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===================================================================
+   Markets page - كروت القارات
+   =================================================================== */
+.mkt-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.mkt-card {
+  position: relative;
+  text-align: left;
+  background: var(--surf);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  cursor: pointer;
+  color: var(--txt);
+  font-family: inherit;
+  overflow: hidden;
+  transition: transform .18s cubic-bezier(.2,.7,.2,1),
+              border-color .18s ease, background .18s ease;
+}
+.mkt-card::after {           /* شريط سفلي بيتمد لما تختار */
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 3px; width: 100%;
+  background: var(--m1);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+}
+.mkt-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255,0,128,.45);
+  background: var(--raised);
+}
+.mkt-card-on {
+  background: var(--raised);
+  border-color: var(--m1);
+}
+.mkt-card-on::after { transform: scaleX(1); }
+
+.mkt-glyph { color: var(--m1); font-size: 20px; line-height: 1; }
+.mkt-name  { margin-top: 10px; font-size: 15.5px; font-weight: 600; }
+.mkt-rev   { margin-top: 8px; font-size: 20px; font-weight: 700; letter-spacing: -.4px; }
+.mkt-share { margin-top: 3px; font-size: 11px; color: var(--dim); }
+
+.mkt-empty {
+  padding: 46px 0;
+  text-align: center;
+  color: var(--dim);
+  font-size: 14.5px;
+}
+
+.mkt-detail { animation: rise .38s cubic-bezier(.2,.7,.2,1) both; }
+.mkt-detail-head { margin-bottom: 16px; }
+.mkt-detail-title {
+  font-size: 26px; font-weight: 700; letter-spacing: -.6px;
+}
+.mkt-detail-sub { margin-top: 5px; font-size: 12.5px; color: var(--dim); }
+.mkt-detail .drill-tiles { padding-top: 0; margin-bottom: 18px; }
+
+@media (max-width: 1250px) { .mkt-cards { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px)  { .mkt-cards { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===================================================================
+   خلفية متحركة ناعمة
+   طبقة واحدة ورا كل الصفحات، بتتحرك ببطء شديد. CSS خالص - مفيش
+   JavaScript ولا canvas، فمش بتاكل من أداء الصفحة ولا بتأثر على
+   الشارتات. مقصود إنها خافتة: الخلفية المفروض تدي عمق، مش تسحب
+   العين بعيد عن الأرقام.
+   =================================================================== */
+.aurora {
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.aurora span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  /* من غير filter:blur - ده كان بياكل 14 إطار/ثانية لوحده.
+     التدرج الناعم تحت بيدي نفس المنظر بتكلفة صفر. */
+  opacity: .30;
+  will-change: transform;
+}
+.aurora span:nth-child(1) {
+  width: 46vw; height: 46vw; left: -8vw; top: -6vw;
+  background: radial-gradient(circle, rgba(255,0,128,.55) 0%, rgba(255,0,128,.22) 35%, rgba(255,0,128,0) 68%);
+  animation: drift1 40s ease-in-out infinite;
+}
+.aurora span:nth-child(2) {
+  width: 40vw; height: 40vw; right: -6vw; top: 12vh;
+  background: radial-gradient(circle, rgba(121,40,202,.58) 0%, rgba(121,40,202,.24) 35%, rgba(121,40,202,0) 68%);
+  animation: drift2 52s ease-in-out infinite;
+}
+.aurora span:nth-child(3) {
+  width: 34vw; height: 34vw; left: 26vw; bottom: -12vh;
+  background: radial-gradient(circle, rgba(0,229,160,.32) 0%, rgba(0,229,160,.12) 35%, rgba(0,229,160,0) 68%);
+  animation: drift3 64s ease-in-out infinite;
+}
+
+@keyframes drift1 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%     { transform: translate(9vw, 7vh) scale(1.12); }
+  66%     { transform: translate(4vw, -5vh) scale(.94); }
+}
+@keyframes drift2 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  40%     { transform: translate(-11vw, 9vh) scale(1.08); }
+  75%     { transform: translate(-4vw, -6vh) scale(.92); }
+}
+@keyframes drift3 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%     { transform: translate(8vw, -9vh) scale(1.15); }
+}
+
+/* أي حد مفعّل عنده "تقليل الحركة" في النظام - الخلفية تقف تماماً.
+   دي مش رفاهية: الحركة المستمرة بتضايق ناس عندها حساسية للحركة. */
+/* اللوحات بقت شبه شفافة عشان الحركة اللي وراها تبان.
+   backdrop-filter بيعمل ضبابية لللي تحتها، فالنص والأرقام
+   بتفضل واضحة تماماً - مش مجرد تقليل عتامة. */
+/* اللوحات شبه شفافة عشان الحركة اللي وراها تبان.
+   من غير backdrop-filter عن قصد: الضبابية بتضطر المتصفح يعيد حساب
+   كل اللي ورا كل لوحة في كل إطار، وطالما الخلفية بتتحرك فده بيتكرر
+   60 مرة في الثانية. قِسته: 25 إطار مع الضبابية مقابل 37 من غيرها
+   على صفحة Executive. الفرق في الشكل تقريباً مالوش وجود، والفرق في
+   نعومة الصفحة قدام اللجنة كبير. */
+.panel, .drill, .chat-panel {
+  background-color: rgba(21, 12, 34, .76);
+}
+.drill-tile, .mkt-card, .drill-chart, .filter-bar, .kpi-row-tight .kpi {
+  background-color: rgba(21, 12, 34, .82);
+}
+.drill, .mkt-card-on, .mkt-card:hover {
+  background-color: rgba(30, 17, 48, .80);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora span,
+  .grid-overlay { animation: none; }
+}
+
+
+/* ===================================================================
+   الطبقة الاحترافية: خامة + ضوء + تفاعل
+   -------------------------------------------------------------------
+   الفلسفة هنا مقصودة: مفيش أشكال بتلف ورا الأرقام. اللي بيدي الإحساس
+   الغالي في المنتجات المحترمة (Linear, Vercel, Stripe) تلات حاجات:
+     1. خامة حبيبية خفيفة فوق كل حاجة  - بتشيل "الفلات" من اللون الغامق
+     2. شعاع ضوء واسع بيعدي ببطء شديد  - حركة محسوسة من غير تشتيت
+     3. اللوحة بتضيء تحت الماوس        - تفاعل بيحس إن الواجهة "حية"
+   =================================================================== */
+
+/* 1) الحبيبات - SVG noise مدمج، مفيش صورة بتتحمل من النت */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* 2) شعاع الضوء - عريض جداً وخافت، بيقطع الشاشة كل 22 ثانية.
+      عرضه الكبير هو السر: شعاع رفيع يبان زي "المسح" الرخيص، أما
+      الواسع بيقرا كأن الإضاءة نفسها بتتغير في الأوضة. */
+.beam {
+  position: fixed;
+  top: -60%;
+  left: -40%;
+  width: 55%;
+  height: 220%;
+  z-index: 0;
+  pointer-events: none;
+  transform: rotate(14deg);
+  /* التدرج نفسه ناعم، فمش محتاج filter:blur - وده وفّر إطارات كتير */
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,120,190,.020) 25%,
+    rgba(255,120,190,.055) 47%,
+    rgba(180,120,255,.062) 55%,
+    rgba(180,120,255,.020) 75%,
+    rgba(255,255,255,0) 100%);
+  will-change: transform;
+  animation: beamSweep 22s ease-in-out infinite;
+}
+@keyframes beamSweep {
+  0%   { transform: translateX(0) rotate(14deg); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(230vw) rotate(14deg); opacity: 0; }
+}
+
+/* 3) اللوحة بتضيء تحت الماوس.
+      نقطة الضوء بتتحدد من متغيرين (--mx/--my) بيتحدثوا من polish.js.
+      الطبقة دي ورا المحتوى تماماً فمابتأثرش على قراءة أي رقم. */
+.panel, .drill, .mkt-card, .chat-panel { position: relative; isolation: isolate; }
+.panel::before, .drill::before, .mkt-card::before, .chat-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s ease;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%),
+              rgba(255, 0, 128, .13), transparent 42%);
+}
+.panel:hover::before, .drill:hover::before,
+.mkt-card:hover::before, .chat-panel:hover::before { opacity: 1; }
+
+/* الحد العلوي بيلمع هو كمان - تفصيلة صغيرة بتفرق */
+.panel::after, .mkt-card::after {
+  content: "";
+  position: absolute;
+  top: -1px; left: 12%; right: 12%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent,
+              rgba(255,255,255,.16), transparent);
+  opacity: .55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam { animation: none; }
+}
+
+/* سطر "الشارت ده بيقولك إيه" - بيتحط تحت كل شارت بلغة عادية عشان
+   حد مش متعود على الشارتات يفهم من غير شرح شفهي. */
+.reads {
+  margin-top: 16px;
+  padding: 13px 16px;
+  background: rgba(255, 0, 128, .055);
+  border-left: 2px solid var(--m1);
+  border-radius: 0 8px 8px 0;
+  color: var(--txt);
+  font-size: 13.5px;
+  line-height: 1.65;
+  max-width: 940px;
+}
+.reads-lead {
+  color: var(--m1);
+  font-weight: 600;
+  letter-spacing: .2px;
 }

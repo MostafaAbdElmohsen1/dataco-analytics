@@ -19,18 +19,23 @@ app = Dash(
     __name__,
     use_pages=True,
     pages_folder="pages",
-    title="DataCo | Supply Chain Analytics",
+    title="Meridian Retail Group | Supply Chain Analytics",
     suppress_callback_exceptions=True,
 )
 
 # gunicorn looks for this object: `gunicorn app:server`
 server = app.server
 
+# الترتيب مقصود - الصفحات بتحكي قصة بالترتيب ده:
+#   كام؟ -> مين؟ -> إيه؟ -> فين؟ -> إيه المكسور؟ -> نثق ليه؟ -> اسأل
 NAV = [
     ("/", "Home", "\u25c6"),
     ("/executive", "Executive", "\u25a6"),
-    ("/network", "Network", "\u25cb"),
+    ("/customers", "Customers", "\u25d1"),
+    ("/products", "Products", "\u25a3"),
+    ("/markets", "Markets", "\u25c8"),
     ("/map", "World map", "\u2295"),
+    ("/network", "Network", "\u25cb"),
     ("/trends", "Trends", "\u25b8"),
     ("/risk", "Orders & risk", "\u26a0"),
     ("/quality", "Data Quality", "\u25c9"),
@@ -59,8 +64,14 @@ def sidebar():
             html.Div(
                 className="side-brand",
                 children=[
-                    html.Div("DataCo", className="side-brand-name"),
-                    html.Div("ANALYTICS", className="side-brand-sub"),
+                    html.Img(src="/assets/logo.svg", className="side-logo",
+                             alt="Meridian Retail Group"),
+                    html.Div(
+                        children=[
+                            html.Div("MERIDIAN", className="side-brand-name"),
+                            html.Div("RETAIL GROUP", className="side-brand-sub"),
+                        ]
+                    ),
                 ],
             ),
             html.Nav(links, className="nav"),
@@ -92,7 +103,17 @@ def sidebar():
 app.layout = html.Div(
     className="shell",
     children=[
+        # الخلفية المتحركة - تلات دوائر ملونة بتتحرك ببطء ورا كل الصفحات.
+        # CSS خالص (شوف .aurora في style.css): مفيش JavaScript ولا canvas،
+        # فمابتاكلش من أداء الشارتات. وبتقف لوحدها لو المستخدم مفعّل
+        # "تقليل الحركة" في إعدادات نظامه.
+        html.Div(className="aurora",
+                 children=[html.Span(), html.Span(), html.Span()]),
         html.Div(className="grid-overlay"),
+        # شعاع ضوء واسع بيعدي على الصفحة ببطء، وطبقة حبيبات فوق كل حاجة.
+        # الاتنين CSS خالص - شوف .beam و .grain في style.css.
+        html.Div(className="beam"),
+        html.Div(className="grain"),
         sidebar(),
         html.Main(dash.page_container, className="content"),
     ],
@@ -102,5 +123,5 @@ app.layout = html.Div(
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     debug = os.environ.get("DASH_DEBUG", "1") == "1"
-    print(f"\n  DataCo -> http://127.0.0.1:{port}\n")
+    print(f"\n  Meridian Retail Group -> http://127.0.0.1:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=debug)

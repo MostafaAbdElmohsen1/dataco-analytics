@@ -314,7 +314,7 @@ layout = html.Div(
     children=[
         T.page_head(
             "World map",
-            "Every destination country DataCo ships to. Hover a country for its "
+            "Every destination country Meridian ships to. Hover a country for its "
             "full performance card - revenue, margin, orders, customers and "
             "measured late rate.",
         ),

@@ -30,7 +30,7 @@ def fail(step: str, what: str, how: str) -> None:
 
 
 print("\n" + "=" * 60)
-print("  فحص إعدادات DataCo Ask the Data")
+print("  فحص إعدادات Meridian Ask the Data")
 print("=" * 60 + "\n")
 
 # ---------------------------------------------------------------- 1

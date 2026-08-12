@@ -130,7 +130,7 @@ next_steps = html.Div(
     className="panel panel-wide home-note",
     style={"borderColor": T.AMBER},
     children=[
-        html.Div("What this means for DataCo", className="panel-title"),
+        html.Div("What this means for Meridian", className="panel-title"),
         html.Div(
             "Revenue concentration and late delivery are the two "
             "headline risks in this data. Root causes, market-level "
@@ -150,7 +150,7 @@ layout = html.Div(
                 html.Div(
                     className="col-left",
                     children=[
-                        html.H1("DataCo", className="brand"),
+                        html.H1("MERIDIAN", className="brand"),
                         html.Div("SUPPLY CHAIN ANALYTICS", className="brand-sub"),
                         html.Div(className="rule"),
                         html.Div(

@@ -81,6 +81,21 @@ def kpi(value: str, label: str, accent: str = M1, value_colour: str | None = Non
     )
 
 
+def kpi_tile(value: str, label: str, colour: str | None = None):
+    """
+    مربع رقم صغير - بيستخدم في لوحة التفاصيل وصفحة الأسواق.
+    مختلف عن kpi() اللي فوق: ده أصغر وبيتحط في شبكة، وده بيتحط في صف.
+    """
+    return html.Div(
+        className="drill-tile",
+        children=[
+            html.Div(value, className="drill-tile-value",
+                     style={"color": colour or TXT}),
+            html.Div(label, className="drill-tile-label"),
+        ],
+    )
+
+
 def panel(title: str, subtitle: str | None, *children, wide: bool = False):
     head = [html.Div(title, className="panel-title")]
     if subtitle:
